@@ -76,6 +76,7 @@ function _handleMessage(msg) {
 
     case 'start':
       hideAllOverlays();
+      state.localPadPos = 0.5;
       state.gameState = 'playing';
       break;
 
