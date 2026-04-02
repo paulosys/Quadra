@@ -10,6 +10,7 @@ import { showOverlay } from './ui.js';
 import { unlockAudio } from './audio.js';
 import { state } from './state.js';
 import { clearParticles } from './particles.js';
+import { initDebug, debugTick } from './debug.js';
 
 // ── Layout ─────────────────────────────────────────────────────────────────────
 resize();
@@ -18,11 +19,15 @@ window.addEventListener('resize', resize);
 // ── Input ──────────────────────────────────────────────────────────────────────
 setupInputListeners(send);
 
+// ── Debug ──────────────────────────────────────────────────────────────────────
+initDebug();
+
 // ── Main loop ──────────────────────────────────────────────────────────────────
 function loop() {
   requestAnimationFrame(loop);
   inputTick(send);
   draw();
+  debugTick();
 }
 loop();
 

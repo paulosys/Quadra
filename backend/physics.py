@@ -111,7 +111,7 @@ class PhysicsEngine:
 
             if inward * (ball_edge - wall) < 0:
                 if self._in_goal(perp, goal_half, goal_offsets[side]):
-                    if inward * (ball_edge - wall) < -GOAL_DEPTH:
+                    if inward * (ball_edge - wall) < -2 * BALL_R:
                         return side
                 else:
                     setattr(b, vattr, inward * abs(vel))

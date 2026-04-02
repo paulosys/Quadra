@@ -80,11 +80,50 @@ function _syncBallDisplayMap(st) {
 }
 
 function _drawGoalPockets(st, S, fT, fB, fL, fR, gd, gwH, gwV, go) {
-  ctx.fillStyle = (st.goal_moving) ? '#6a3080' : '#7a2030';
-  if (!st.eliminated[0]) _rrFill(S*(0.5+go[0])-gwH, fT-gd,  gwH*2, gd+4,  6);
-  if (!st.eliminated[1]) _rrFill(S*(0.5+go[1])-gwH, fB-4,   gwH*2, gd+4,  6);
-  if (!st.eliminated[2]) _rrFill(fL-gd,  S*(0.5+go[2])-gwV,  gd+4,  gwV*2, 6);
-  if (!st.eliminated[3]) _rrFill(fR-4,   S*(0.5+go[3])-gwV,  gd+4,  gwV*2, 6);
+  const bg = (st.goal_moving) ? '#6a3080' : '#7a2030';
+  if (!st.eliminated[0]) { const x=S*(0.5+go[0])-gwH, y=fT-gd, w=gwH*2, h=gd+4; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'top'); }
+  if (!st.eliminated[1]) { const x=S*(0.5+go[1])-gwH, y=fB-4,  w=gwH*2, h=gd+4; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'bottom'); }
+  if (!st.eliminated[2]) { const x=fL-gd, y=S*(0.5+go[2])-gwV, w=gd+4, h=gwV*2; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'left'); }
+  if (!st.eliminated[3]) { const x=fR-4,  y=S*(0.5+go[3])-gwV, w=gd+4, h=gwV*2; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'right'); }
+}
+
+function _drawNetLines(x, y, w, h, side) {
+  const sp = Math.max(6, Math.round(Math.min(w, h) * 0.17));
+  ctx.save();
+  _rrPath(x, y, w, h, 6);
+  ctx.clip();
+
+  // Horizontal lines
+  for (let gy = y + sp; gy < y + h - 1; gy += sp) {
+    let t = (side === 'top')    ? 1 - (gy - y) / h
+          : (side === 'bottom') ? (gy - y) / h
+          : 0.55;
+    ctx.strokeStyle = `rgba(255,255,255,${(0.13 + t * 0.2).toFixed(2)})`;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + w, gy); ctx.stroke();
+  }
+
+  // Vertical lines
+  for (let gx = x + sp; gx < x + w - 1; gx += sp) {
+    let t = (side === 'left')  ? 1 - (gx - x) / w
+          : (side === 'right') ? (gx - x) / w
+          : 0.55;
+    ctx.strokeStyle = `rgba(255,255,255,${(0.13 + t * 0.2).toFixed(2)})`;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + h); ctx.stroke();
+  }
+
+  // Back-wall bright line (deepest edge)
+  ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  if (side === 'top')    { ctx.moveTo(x + 4, y + 2);     ctx.lineTo(x + w - 4, y + 2); }
+  if (side === 'bottom') { ctx.moveTo(x + 4, y + h - 2); ctx.lineTo(x + w - 4, y + h - 2); }
+  if (side === 'left')   { ctx.moveTo(x + 2, y + 4);     ctx.lineTo(x + 2, y + h - 4); }
+  if (side === 'right')  { ctx.moveTo(x + w - 2, y + 4); ctx.lineTo(x + w - 2, y + h - 4); }
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 function _drawField(fL, fT, fR, fB, fW, fH, S) {

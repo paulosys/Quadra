@@ -117,7 +117,6 @@ class PowerUpManager:
         next_id: Callable[[], int],
     ) -> None:
         """Apply ball-level effect. Room-level effects are left for the Room."""
-        pu.type = "snitch"
 
         if pu.type == "double":
             if len(balls) < MAX_BALLS:
