@@ -1,0 +1,56 @@
+"""
+Global configuration — all tunable values loaded from environment variables.
+"""
+import os
+
+# ── Tick ───────────────────────────────────────────────────────────────────────
+TICK_RATE: int   = int(os.getenv("TICK_RATE", 60))
+TICK_DT:   float = 1.0 / TICK_RATE
+
+# ── Arena ──────────────────────────────────────────────────────────────────────
+FIELD_MARGIN: float = float(os.getenv("FIELD_MARGIN", 0.08))
+PADDLE_THICK: float = float(os.getenv("PADDLE_THICK", 0.03))
+PADDLE_LEN_H: float = float(os.getenv("PADDLE_LEN_H", 0.16))
+PADDLE_LEN_V: float = float(os.getenv("PADDLE_LEN_V", 0.16))
+PADDLE_SPEED: float = float(os.getenv("PADDLE_SPEED", 0.012))
+
+# ── Ball ───────────────────────────────────────────────────────────────────────
+BALL_R:          float = float(os.getenv("BALL_R",          0.022))
+BALL_SPEED_INIT: float = float(os.getenv("BALL_SPEED_INIT", 0.008))
+BALL_SPEED_MAX:  float = float(os.getenv("BALL_SPEED_MAX",  0.022))
+BALL_SPEED_INC:  float = float(os.getenv("BALL_SPEED_INC",  0.00015))
+
+# ── Goals ──────────────────────────────────────────────────────────────────────
+GOAL_DEPTH:  float = float(os.getenv("GOAL_DEPTH",  0.07))
+GOAL_HALF_H: float = float(os.getenv("GOAL_HALF_H", 0.168))
+GOAL_HALF_V: float = float(os.getenv("GOAL_HALF_V", 0.168))
+
+# ── Game ───────────────────────────────────────────────────────────────────────
+LIVES_START:    int   = int(os.getenv("LIVES_START",    3))
+GOAL_PAUSE:     float = float(os.getenv("GOAL_PAUSE",   2.0))
+COUNTDOWN_SECS: int   = int(os.getenv("COUNTDOWN_SECS", 3))
+
+# ── Power-ups ──────────────────────────────────────────────────────────────────
+POWERUP_RADIUS:        float     = float(os.getenv("POWERUP_RADIUS",        0.038))
+POWERUP_SPAWN_MIN:     float     = float(os.getenv("POWERUP_SPAWN_MIN",     8.0))
+POWERUP_SPAWN_MAX:     float     = float(os.getenv("POWERUP_SPAWN_MAX",     14.0))
+POWERUP_TYPES:         list[str] = ["double", "speed", "movinggoal"]
+POWERUP_WEIGHTS:       list[int] = [3, 3, 1]
+POWERUP_QUEUE_SIZE:    int       = int(os.getenv("POWERUP_QUEUE_SIZE",      4))
+MAX_POWERUPS_ON_FIELD: int       = int(os.getenv("MAX_POWERUPS_ON_FIELD",   2))
+MAX_BALLS:             int       = int(os.getenv("MAX_BALLS",                4))
+
+SPEED_BOOST_FACTOR:   float = float(os.getenv("SPEED_BOOST_FACTOR",   1.65))
+SPEED_BOOST_DURATION: float = float(os.getenv("SPEED_BOOST_DURATION", 5.0))
+
+MOVING_GOAL_SPEED:    float = float(os.getenv("MOVING_GOAL_SPEED",    1.1))
+MOVING_GOAL_AMP:      float = float(os.getenv("MOVING_GOAL_AMP",      0.17))
+MOVING_GOAL_DURATION: float = float(os.getenv("MOVING_GOAL_DURATION", 9.0))
+
+# ── Network ────────────────────────────────────────────────────────────────────
+WS_HOST:          str   = os.getenv("WS_HOST",          "0.0.0.0")
+WS_PORT:          int   = int(os.getenv("WS_PORT",       8765))
+HTTP_HOST:        str   = os.getenv("HTTP_HOST",         "0.0.0.0")
+HTTP_PORT:        int   = int(os.getenv("HTTP_PORT",      8080))
+WS_PING_INTERVAL: int   = int(os.getenv("WS_PING_INTERVAL", 20))
+WS_PING_TIMEOUT:  int   = int(os.getenv("WS_PING_TIMEOUT",  30))

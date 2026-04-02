@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  quadra:
+    build: .
+    container_name: quadra
+    restart: unless-stopped
+    ports:
+      - "8080:8080"   # HTTP — página do jogo
+      - "8765:8765"   # WebSocket — servidor do jogo
