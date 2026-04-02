@@ -44,6 +44,13 @@ export function playPowerupCollect(type) {
     _tone(600, 0.09, 'sine', 0.2);
     setTimeout(() => _tone(800,  0.09, 'sine', 0.2), 90);
     setTimeout(() => _tone(1050, 0.14, 'sine', 0.2), 180);
+  } else if (type === 'snitch') {
+    // Magical shimmer: rapid ascending arpeggio
+    _tone(880,  0.08, 'sine', 0.18);
+    setTimeout(() => _tone(1108, 0.08, 'sine', 0.18), 70);
+    setTimeout(() => _tone(1320, 0.08, 'sine', 0.18), 140);
+    setTimeout(() => _tone(1760, 0.18, 'sine', 0.22), 210);
+    setTimeout(() => _tone(1320, 0.22, 'sine', 0.12, 440), 360);
   } else {
     _tone(300, 0.28, 'sawtooth', 0.25, 900);
   }

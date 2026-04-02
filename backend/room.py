@@ -19,6 +19,7 @@ from websockets.server import WebSocketServerProtocol
 from config import (
     BALL_SPEED_INIT, BALL_SPEED_MAX, LIVES_START,
     MOVING_GOAL_AMP, MOVING_GOAL_DURATION, MOVING_GOAL_SPEED,
+    SNITCH_TURN_CHANCE,
     SPEED_BOOST_FACTOR, TICK_DT,
 )
 from models import Ball, PowerUp, Side, SIDE_NAMES
@@ -101,6 +102,7 @@ class Room:
         Returns (scored_side | None, list of collected powerup types).
         """
         self._tick_boost_timers()
+        self._tick_snitch_movement()
         self._tick_moving_goals()
 
         collected = self._powerup_mgr.tick(self.powerups, self.balls, self._next_id)
@@ -127,6 +129,25 @@ class Room:
                     if spd > BALL_SPEED_MAX:
                         ball.vx = ball.vx / spd * BALL_SPEED_MAX
                         ball.vy = ball.vy / spd * BALL_SPEED_MAX
+
+    def _tick_snitch_movement(self) -> None:
+        for ball in self.balls:
+            if not ball.snitched:
+                continue
+            ball.snitch_timer -= TICK_DT
+            if ball.snitch_timer <= 0:
+                ball.snitched = False
+                continue
+            angle = math.atan2(ball.vy, ball.vx)
+            if random.random() < SNITCH_TURN_CHANCE:
+                # Sharp random turn (±130°)
+                angle += random.uniform(-math.pi * 0.72, math.pi * 0.72)
+            else:
+                # Continuous slight angular drift
+                angle += random.uniform(-0.13, 0.13)
+            spd = ball.speed
+            ball.vx = math.cos(angle) * spd
+            ball.vy = math.sin(angle) * spd
 
     def _tick_moving_goals(self) -> None:
         if self._goal_moving_timer <= 0:

@@ -125,6 +125,11 @@ function _drawBalls(st, S) {
     const disp = state.displayBallMap.get(b.id) || { x: b.x, y: b.y };
     const bx = disp.x * S, by = disp.y * S, br = BALL_R * S;
 
+    if (b.snitched) {
+      _drawSnitch(bx, by, br);
+      continue;
+    }
+
     if (b.boosted) spawnFire(bx, by, b.vx * S * 60, b.vy * S * 60);
 
     if (b.boosted) {
@@ -144,6 +149,83 @@ function _drawBalls(st, S) {
   }
 }
 
+function _drawSnitch(bx, by, br) {
+  const t    = Date.now();
+  const flap = Math.sin(t / 70);   // fast wing flap
+  const shimmer = Math.sin(t / 400) * 0.5 + 0.5;
+
+  // Golden outer glow
+  const glow = ctx.createRadialGradient(bx, by, 0, bx, by, br * 4);
+  glow.addColorStop(0,   `rgba(255,215,0,${0.35 + shimmer * 0.15})`);
+  glow.addColorStop(0.5, 'rgba(255,180,0,0.12)');
+  glow.addColorStop(1,   'rgba(255,140,0,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(bx, by, br * 4, 0, Math.PI * 2); ctx.fill();
+
+  ctx.save();
+
+  // Wings (drawn behind the ball)
+  const wingW  = br * 2.8;
+  const wingH  = br * (1.1 + Math.abs(flap) * 1.2);
+  const tiltY  = flap * br * 0.4;
+
+  ctx.globalAlpha = 0.82;
+
+  // Left wing
+  ctx.save();
+  ctx.translate(bx - br * 1.6, by + tiltY);
+  ctx.rotate(-Math.PI / 8 + flap * 0.18);
+  const lwg = ctx.createRadialGradient(-wingW * 0.3, 0, 0, -wingW * 0.3, 0, wingW * 0.9);
+  lwg.addColorStop(0, 'rgba(255,255,220,0.95)');
+  lwg.addColorStop(0.5, 'rgba(240,210,120,0.7)');
+  lwg.addColorStop(1,   'rgba(200,160,50,0)');
+  ctx.fillStyle = lwg;
+  ctx.beginPath(); ctx.ellipse(0, 0, wingW * 0.85, wingH * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+  // Wing feather lines
+  ctx.strokeStyle = 'rgba(200,170,80,0.4)'; ctx.lineWidth = 0.8;
+  for (let i = 1; i <= 3; i++) {
+    const fx = -wingW * 0.7 * (i / 3.5);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(fx, -wingH * 0.45); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(fx, wingH * 0.45); ctx.stroke();
+  }
+  ctx.restore();
+
+  // Right wing
+  ctx.save();
+  ctx.translate(bx + br * 1.6, by + tiltY);
+  ctx.rotate(Math.PI / 8 - flap * 0.18);
+  const rwg = ctx.createRadialGradient(wingW * 0.3, 0, 0, wingW * 0.3, 0, wingW * 0.9);
+  rwg.addColorStop(0, 'rgba(255,255,220,0.95)');
+  rwg.addColorStop(0.5, 'rgba(240,210,120,0.7)');
+  rwg.addColorStop(1,   'rgba(200,160,50,0)');
+  ctx.fillStyle = rwg;
+  ctx.beginPath(); ctx.ellipse(0, 0, wingW * 0.85, wingH * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(200,170,80,0.4)'; ctx.lineWidth = 0.8;
+  for (let i = 1; i <= 3; i++) {
+    const fx = wingW * 0.7 * (i / 3.5);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(fx, -wingH * 0.45); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(fx, wingH * 0.45); ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.globalAlpha = 1.0;
+
+  // Golden ball body
+  const bg = ctx.createRadialGradient(bx - br * 0.3, by - br * 0.35, br * 0.05, bx, by, br);
+  bg.addColorStop(0,   '#fffde0');
+  bg.addColorStop(0.4, '#ffd700');
+  bg.addColorStop(0.8, '#c8900a');
+  bg.addColorStop(1,   '#7a5200');
+  ctx.fillStyle = bg;
+  ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+
+  // Specular highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath(); ctx.ellipse(bx - br * 0.28, by - br * 0.32, br * 0.28, br * 0.18, -Math.PI / 4, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
 function _drawPowerup(pu, S) {
   const x  = pu.x * S, y = pu.y * S;
   const r  = POWERUP_RADIUS * S;
@@ -154,6 +236,7 @@ function _drawPowerup(pu, S) {
     double:     { fill: 'rgba(68,170,255,0.18)',  stroke: '#4af',    shadow: '#4af',    label: '2X', font: `bold ${Math.floor(pr)}px 'Bebas Neue', sans-serif` },
     movinggoal: { fill: 'rgba(180,80,255,0.18)',   stroke: '#b45fff', shadow: '#b45fff', label: '↔', font: `${Math.floor(pr * 1.1)}px Arial` },
     speed:      { fill: 'rgba(255,136,0,0.18)',    stroke: '#f80',    shadow: '#f80',    label: '⚡', font: `${Math.floor(pr * 1.2)}px Arial` },
+    snitch:     { fill: 'rgba(255,215,0,0.18)',    stroke: '#ffd700', shadow: '#ffd700', label: '✦', font: `${Math.floor(pr * 1.15)}px Arial` },
   };
   const s = styles[pu.type] || styles.speed;
   ctx.fillStyle   = s.fill;

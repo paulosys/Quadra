@@ -25,9 +25,11 @@ class Ball:
     y:           float
     vx:          float
     vy:          float
-    boosted:     bool  = False
-    boost_timer: float = 0.0
-    bounce:      bool  = False
+    boosted:      bool  = False
+    boost_timer:  float = 0.0
+    bounce:       bool  = False
+    snitched:     bool  = False
+    snitch_timer: float = 0.0
 
     @property
     def speed(self) -> float:
@@ -35,13 +37,14 @@ class Ball:
 
     def to_dict(self) -> dict:
         return {
-            "id":      self.id,
-            "x":       self.x,
-            "y":       self.y,
-            "vx":      self.vx,
-            "vy":      self.vy,
-            "boosted": self.boosted,
-            "bounce":  self.bounce,
+            "id":       self.id,
+            "x":        self.x,
+            "y":        self.y,
+            "vx":       self.vx,
+            "vy":       self.vy,
+            "boosted":  self.boosted,
+            "bounce":   self.bounce,
+            "snitched": self.snitched,
         }
 
 

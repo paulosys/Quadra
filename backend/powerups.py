@@ -17,6 +17,7 @@ from config import (
     POWERUP_QUEUE_SIZE, POWERUP_RADIUS,
     POWERUP_SPAWN_MAX, POWERUP_SPAWN_MIN,
     POWERUP_TYPES, POWERUP_WEIGHTS,
+    SNITCH_DURATION,
     SPEED_BOOST_DURATION, SPEED_BOOST_FACTOR,
     TICK_DT,
 )
@@ -116,6 +117,8 @@ class PowerUpManager:
         next_id: Callable[[], int],
     ) -> None:
         """Apply ball-level effect. Room-level effects are left for the Room."""
+        pu.type = "snitch"
+
         if pu.type == "double":
             if len(balls) < MAX_BALLS:
                 angle = math.atan2(ball.vy, ball.vx) + math.pi + random.uniform(-0.5, 0.5)
@@ -135,5 +138,14 @@ class PowerUpManager:
                 ball.vy = ball.vy / spd * new_spd
             ball.boosted     = True
             ball.boost_timer = SPEED_BOOST_DURATION
+
+        elif pu.type == "snitch":
+            ball.snitched     = True
+            ball.snitch_timer = SNITCH_DURATION
+            # Dart away in a random direction at moderate speed
+            angle = random.uniform(0, math.pi * 2)
+            spd   = max(ball.speed, BALL_SPEED_MAX * 0.55)
+            ball.vx = math.cos(angle) * spd
+            ball.vy = math.sin(angle) * spd
 
         # "movinggoal" has no ball-level effect; Room reacts to it via collected list.

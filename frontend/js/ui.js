@@ -53,7 +53,7 @@ export function updateScoreUI() {
 
 export function updatePowerupQueue(queue) {
   const el     = document.getElementById('pq-items');
-  const labels = { double: '2X', speed: '⚡', movinggoal: '↔' };
+  const labels = { double: '2X', speed: '⚡', movinggoal: '↔', snitch: '✦' };
   el.innerHTML = '';
   for (const ptype of queue) {
     const div       = document.createElement('div');

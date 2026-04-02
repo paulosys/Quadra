@@ -34,8 +34,8 @@ COUNTDOWN_SECS: int   = int(os.getenv("COUNTDOWN_SECS", 3))
 POWERUP_RADIUS:        float     = float(os.getenv("POWERUP_RADIUS",        0.038))
 POWERUP_SPAWN_MIN:     float     = float(os.getenv("POWERUP_SPAWN_MIN",     8.0))
 POWERUP_SPAWN_MAX:     float     = float(os.getenv("POWERUP_SPAWN_MAX",     14.0))
-POWERUP_TYPES:         list[str] = ["double", "speed", "movinggoal"]
-POWERUP_WEIGHTS:       list[int] = [3, 3, 1]
+POWERUP_TYPES:         list[str] = ["double", "speed", "movinggoal", "snitch"]
+POWERUP_WEIGHTS:       list[int] = [3, 3, 1, 2]
 POWERUP_QUEUE_SIZE:    int       = int(os.getenv("POWERUP_QUEUE_SIZE",      4))
 MAX_POWERUPS_ON_FIELD: int       = int(os.getenv("MAX_POWERUPS_ON_FIELD",   2))
 MAX_BALLS:             int       = int(os.getenv("MAX_BALLS",                4))
@@ -46,6 +46,9 @@ SPEED_BOOST_DURATION: float = float(os.getenv("SPEED_BOOST_DURATION", 5.0))
 MOVING_GOAL_SPEED:    float = float(os.getenv("MOVING_GOAL_SPEED",    1.1))
 MOVING_GOAL_AMP:      float = float(os.getenv("MOVING_GOAL_AMP",      0.17))
 MOVING_GOAL_DURATION: float = float(os.getenv("MOVING_GOAL_DURATION", 9.0))
+
+SNITCH_DURATION:    float = float(os.getenv("SNITCH_DURATION",    8.0))
+SNITCH_TURN_CHANCE: float = float(os.getenv("SNITCH_TURN_CHANCE", 0.025))  # sharp-turn probability per tick
 
 # ── Network ────────────────────────────────────────────────────────────────────
 WS_HOST:          str   = os.getenv("WS_HOST",          "0.0.0.0")
