@@ -12,7 +12,7 @@ import {
 
 let _ws = null;
 
-export function connect() {
+export function connect(joinMsg) {
   const statusEl = document.getElementById('connStatus');
   statusEl.textContent = 'conectando...';
   statusEl.className   = 'conn-status';
@@ -22,6 +22,7 @@ export function connect() {
   _ws.addEventListener('open', () => {
     statusEl.textContent = '● conectado ao servidor';
     statusEl.className   = 'conn-status ok';
+    if (joinMsg) send(joinMsg);
   });
 
   _ws.addEventListener('close', () => {
@@ -43,9 +44,9 @@ export function send(obj) {
   if (_ws && _ws.readyState === WebSocket.OPEN) _ws.send(JSON.stringify(obj));
 }
 
-export function reconnect() {
+export function reconnect(joinMsg) {
   if (_ws) { _ws.close(); _ws = null; }
-  connect();
+  connect(joinMsg);
 }
 
 // ── Message routing ───────────────────────────────────────────────────────────

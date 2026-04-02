@@ -55,7 +55,7 @@ document.getElementById('btnReplay').addEventListener('click', () => {
   s.balls = []; s.paddles = [0.5, 0.5, 0.5, 0.5];
   s.lives = [3, 3, 3, 3]; s.eliminated = [false, false, false, false];
   s.names = ['', '', '', '']; s.powerups = []; s.powerup_queue = [];
-  send({ type: 'join', name, room: state.myRoom });
+  reconnect({ type: 'join', name, room: state.myRoom });
 });
 
 document.getElementById('btnLeave').addEventListener('click', () => {
