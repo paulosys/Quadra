@@ -57,12 +57,12 @@ class PhysicsEngine:
                 ball.vx *= self._speed_inc
                 ball.vy *= self._speed_inc
 
-        scored: Optional[Side] = (
-            self._check_side(ball, Side.TOP,    paddles, eliminated, players, goal_offsets)
-            or self._check_side(ball, Side.BOTTOM, paddles, eliminated, players, goal_offsets)
-            or self._check_side(ball, Side.LEFT,   paddles, eliminated, players, goal_offsets)
-            or self._check_side(ball, Side.RIGHT,  paddles, eliminated, players, goal_offsets)
-        )
+        scored: Optional[Side] = None
+        for _side in (Side.TOP, Side.BOTTOM, Side.LEFT, Side.RIGHT):
+            result = self._check_side(ball, _side, paddles, eliminated, players, goal_offsets)
+            if result is not None:
+                scored = result
+                break
 
         # Hard speed cap after all deflections
         spd = ball.speed
