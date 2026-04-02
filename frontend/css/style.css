@@ -62,6 +62,7 @@ h1 {
 .sc .sc-label { font-size:.5rem; color:var(--muted); letter-spacing:.2em; text-transform:uppercase; margin-bottom:1px; }
 .sc .sc-name  { font-size:.68rem; font-weight:700; color:var(--accent); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sc .sc-lives { font-size:1rem; color:#e05c70; letter-spacing:.08em; }
+.sc .sc-goals { font-size:.55rem; color:var(--muted); margin-top:2px; min-height:.7rem; }
 
 /* ── Controls hint ── */
 .hints {

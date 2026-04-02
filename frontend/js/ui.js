@@ -43,8 +43,10 @@ export function updateScoreUI() {
     const hearts = state.server.lives[i] > 0
       ? ('♥ ').repeat(state.server.lives[i]).trim()
       : '✕';
+    const goals  = state.server.goals_scored?.[i] ?? 0;
     document.getElementById('sn' + i).textContent = name;
     document.getElementById('sl' + i).textContent = hearts;
+    document.getElementById('sg' + i).textContent = goals > 0 ? `⚽ ${goals}` : '';
     document.getElementById('sc' + i).classList.toggle('me',   i === state.mySlot);
     document.getElementById('sc' + i).classList.toggle('elim', state.server.eliminated[i]);
     document.getElementById('h'  + i).classList.toggle('me',   i === state.mySlot);

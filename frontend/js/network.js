@@ -89,6 +89,7 @@ function _handleMessage(msg) {
       s.lives         = msg.lives;
       s.eliminated    = msg.eliminated;
       s.names         = msg.names;
+      s.goals_scored  = msg.goals_scored  || [0, 0, 0, 0];
       s.powerups      = msg.powerups      || [];
       s.powerup_queue = msg.powerup_queue || [];
       s.goal_offsets  = msg.goal_offsets  || [0, 0, 0, 0];
@@ -99,15 +100,26 @@ function _handleMessage(msg) {
     }
 
     case 'goal': {
-      const s      = state.server;
-      s.lives      = msg.lives;
-      s.eliminated = msg.eliminated;
-      s.names      = msg.names;
+      const s         = state.server;
+      s.lives         = msg.lives;
+      s.eliminated    = msg.eliminated;
+      s.names         = msg.names;
+      s.goals_scored  = msg.goals_scored || [0, 0, 0, 0];
       updateScoreUI();
       state.gameState = 'goal';
 
       if (msg.eliminated_now) playEliminated(); else playGoal();
       _flashScreen();
+
+      // Show goal overlay with scorer info
+      const scorerName = msg.scorer != null
+        ? (msg.names[msg.scorer] || `Jogador ${msg.scorer + 1}`)
+        : null;
+      document.getElementById('goalTitle').textContent = 'GOL!';
+      let sub = scorerName ? `${scorerName} marcou!` : '';
+      if (msg.life_gained && scorerName) sub += ' +1 vida ♥';
+      document.getElementById('goalSub').textContent = sub;
+      showOverlay('ovGoal');
 
       if (msg.game_over) {
         setTimeout(() => {

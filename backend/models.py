@@ -4,8 +4,9 @@ Domain models — plain data containers for game entities.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import IntEnum
+from typing import Optional
 
 
 class Side(IntEnum):
@@ -25,11 +26,12 @@ class Ball:
     y:           float
     vx:          float
     vy:          float
-    boosted:      bool  = False
-    boost_timer:  float = 0.0
-    bounce:       bool  = False
-    snitched:     bool  = False
-    snitch_timer: float = 0.0
+    boosted:      bool          = False
+    boost_timer:  float         = 0.0
+    bounce:       bool          = False
+    snitched:     bool          = False
+    snitch_timer: float         = 0.0
+    last_touch:   Optional[int] = None
 
     @property
     def speed(self) -> float:

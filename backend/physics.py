@@ -106,7 +106,8 @@ class PhysicsEngine:
                     setattr(b, vperp_attr,
                             getattr(b, vperp_attr) + (perp - paddle_pos) / paddle_half * 0.004)
                     setattr(b, attr, field_edge + inward * (r + 0.001))
-                    b.bounce  = True
+                    b.bounce     = True
+                    b.last_touch = int(side)
                     ball_edge = field_edge + inward * 0.001  # keep in sync after reposition
 
             if inward * (ball_edge - wall) < 0:

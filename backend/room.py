@@ -39,8 +39,9 @@ class Room:
         self.names:   Dict[int, str] = {}
 
         # Game state
-        self.lives:     list[int]  = [LIVES_START] * 4
-        self.eliminated: list[bool] = [False] * 4
+        self.lives:        list[int]  = [LIVES_START] * 4
+        self.eliminated:   list[bool] = [False] * 4
+        self.goals_scored: list[int]  = [0] * 4
         self.paddles:   list[float] = [0.5, 0.5, 0.5, 0.5]
         self.balls:     List[Ball]    = []
         self.powerups:  List[PowerUp] = []
@@ -87,8 +88,9 @@ class Room:
 
     def reset_for_new_game(self) -> None:
         """Reset between full games (post-gameover)."""
-        self.lives      = [LIVES_START] * 4
-        self.eliminated = [False] * 4
+        self.lives        = [LIVES_START] * 4
+        self.eliminated   = [False] * 4
+        self.goals_scored = [0] * 4
         self.paddles    = [0.5, 0.5, 0.5, 0.5]
         self.state      = "waiting"
         self.players    = {}
@@ -96,10 +98,11 @@ class Room:
 
     # ── Physics tick ──────────────────────────────────────────────────────────
 
-    def tick(self) -> tuple[Optional[Side], List[str]]:
+    def tick(self) -> tuple[Optional[Side], Optional[int], List[str]]:
         """
         Advance one physics step.
-        Returns (scored_side | None, list of collected powerup types).
+        Returns (scored_side | None, scorer_slot | None, list of collected powerup types).
+        scorer_slot is the player who last touched the ball that scored.
         """
         self._tick_boost_timers()
         self._tick_snitch_movement()
@@ -110,14 +113,16 @@ class Room:
 
         players_set = set(self.players.keys())
         scored: Optional[Side] = None
+        scorer: Optional[int]  = None
         for ball in self.balls:
             result = self._physics.tick_ball(
                 ball, self.paddles, self.eliminated, players_set, self.goal_offsets
             )
             if result is not None and scored is None:
                 scored = result
+                scorer = ball.last_touch
 
-        return scored, collected
+        return scored, scorer, collected
 
     def _tick_boost_timers(self) -> None:
         for ball in self.balls:
@@ -193,6 +198,7 @@ class Room:
             "lives":         self.lives[:],
             "eliminated":    self.eliminated[:],
             "names":         [self.names.get(i, "") for i in range(4)],
+            "goals_scored":  self.goals_scored[:],
             "game_state":    self.state,
             "powerups":      [p.to_dict() for p in self.powerups],
             "powerup_queue": self._powerup_mgr.queue_snapshot(),

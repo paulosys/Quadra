@@ -16,6 +16,7 @@ export const state = {
     lives:         [3, 3, 3, 3],
     eliminated:    [false, false, false, false],
     names:         ['', '', '', ''],
+    goals_scored:  [0, 0, 0, 0],
     powerups:      [],
     powerup_queue: [],
     goal_offsets:  [0, 0, 0, 0],
