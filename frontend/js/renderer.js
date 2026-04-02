@@ -58,7 +58,7 @@ export function draw() {
 
 function _interpolatePaddles(st, S) {
   for (let i = 0; i < 4; i++)
-    state.displayPads[i] = _lerp(state.displayPads[i], st.paddles[i], 0.45);
+    if (st.names[i]) state.displayPads[i] = _lerp(state.displayPads[i], st.paddles[i], 0.45);
   if (state.mySlot >= 0)
     state.displayPads[state.mySlot] = state.localPadPos;
 }
@@ -81,10 +81,10 @@ function _syncBallDisplayMap(st) {
 
 function _drawGoalPockets(st, S, fT, fB, fL, fR, gd, gwH, gwV, go) {
   const bg = (st.goal_moving) ? '#6a3080' : '#7a2030';
-  if (!st.eliminated[0]) { const x=S*(0.5+go[0])-gwH, y=fT-gd, w=gwH*2, h=gd+4; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'top'); }
-  if (!st.eliminated[1]) { const x=S*(0.5+go[1])-gwH, y=fB-4,  w=gwH*2, h=gd+4; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'bottom'); }
-  if (!st.eliminated[2]) { const x=fL-gd, y=S*(0.5+go[2])-gwV, w=gd+4, h=gwV*2; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'left'); }
-  if (!st.eliminated[3]) { const x=fR-4,  y=S*(0.5+go[3])-gwV, w=gd+4, h=gwV*2; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'right'); }
+  if (st.names[0] && !st.eliminated[0]) { const x=S*(0.5+go[0])-gwH, y=fT-gd, w=gwH*2, h=gd+4; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'top'); }
+  if (st.names[1] && !st.eliminated[1]) { const x=S*(0.5+go[1])-gwH, y=fB-4,  w=gwH*2, h=gd+4; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'bottom'); }
+  if (st.names[2] && !st.eliminated[2]) { const x=fL-gd, y=S*(0.5+go[2])-gwV, w=gd+4, h=gwV*2; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'left'); }
+  if (st.names[3] && !st.eliminated[3]) { const x=fR-4,  y=S*(0.5+go[3])-gwV, w=gd+4, h=gwV*2; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'right'); }
 }
 
 function _drawNetLines(x, y, w, h, side) {
@@ -145,18 +145,18 @@ function _drawFieldBorder(fL, fT, fW, fH) {
 
 function _eraseGoalBorders(st, S, fT, fB, fL, fR, gwH, gwV, go) {
   ctx.strokeStyle = '#0d3d20'; ctx.lineWidth = 3.5;
-  if (!st.eliminated[0]) { ctx.beginPath(); ctx.moveTo(S*(0.5+go[0])-gwH+1, fT); ctx.lineTo(S*(0.5+go[0])+gwH-1, fT); ctx.stroke(); }
-  if (!st.eliminated[1]) { ctx.beginPath(); ctx.moveTo(S*(0.5+go[1])-gwH+1, fB); ctx.lineTo(S*(0.5+go[1])+gwH-1, fB); ctx.stroke(); }
-  if (!st.eliminated[2]) { ctx.beginPath(); ctx.moveTo(fL, S*(0.5+go[2])-gwV+1); ctx.lineTo(fL, S*(0.5+go[2])+gwV-1); ctx.stroke(); }
-  if (!st.eliminated[3]) { ctx.beginPath(); ctx.moveTo(fR, S*(0.5+go[3])-gwV+1); ctx.lineTo(fR, S*(0.5+go[3])+gwV-1); ctx.stroke(); }
+  if (st.names[0] && !st.eliminated[0]) { ctx.beginPath(); ctx.moveTo(S*(0.5+go[0])-gwH+1, fT); ctx.lineTo(S*(0.5+go[0])+gwH-1, fT); ctx.stroke(); }
+  if (st.names[1] && !st.eliminated[1]) { ctx.beginPath(); ctx.moveTo(S*(0.5+go[1])-gwH+1, fB); ctx.lineTo(S*(0.5+go[1])+gwH-1, fB); ctx.stroke(); }
+  if (st.names[2] && !st.eliminated[2]) { ctx.beginPath(); ctx.moveTo(fL, S*(0.5+go[2])-gwV+1); ctx.lineTo(fL, S*(0.5+go[2])+gwV-1); ctx.stroke(); }
+  if (st.names[3] && !st.eliminated[3]) { ctx.beginPath(); ctx.moveTo(fR, S*(0.5+go[3])-gwV+1); ctx.lineTo(fR, S*(0.5+go[3])+gwV-1); ctx.stroke(); }
 }
 
 function _drawPaddles(st, pt, fT, fB, fL, fR, S) {
   const dp = state.displayPads;
-  _drawPadH(dp[0]*S, fT+pt*0.5, PADDLE_LEN_H*S, pt, st.eliminated[0], state.mySlot === 0);
-  _drawPadH(dp[1]*S, fB-pt*0.5, PADDLE_LEN_H*S, pt, st.eliminated[1], state.mySlot === 1);
-  _drawPadV(fL+pt*0.5, dp[2]*S, pt, PADDLE_LEN_V*S, st.eliminated[2], state.mySlot === 2);
-  _drawPadV(fR-pt*0.5, dp[3]*S, pt, PADDLE_LEN_V*S, st.eliminated[3], state.mySlot === 3);
+  if (st.names[0]) _drawPadH(dp[0]*S, fT+pt*0.5, PADDLE_LEN_H*S, pt, st.eliminated[0], state.mySlot === 0);
+  if (st.names[1]) _drawPadH(dp[1]*S, fB-pt*0.5, PADDLE_LEN_H*S, pt, st.eliminated[1], state.mySlot === 1);
+  if (st.names[2]) _drawPadV(fL+pt*0.5, dp[2]*S, pt, PADDLE_LEN_V*S, st.eliminated[2], state.mySlot === 2);
+  if (st.names[3]) _drawPadV(fR-pt*0.5, dp[3]*S, pt, PADDLE_LEN_V*S, st.eliminated[3], state.mySlot === 3);
 }
 
 function _drawBalls(st, S) {
