@@ -37,6 +37,7 @@ frontend/           ← Browser client (ES Modules, no bundler)
     ui.js           ← DOM overlays, scoreboard, powerup queue
     input.js        ← Keyboard + mobile touch → server
     network.js      ← WebSocket: connect, send, message routing
+    debug.js        ← Debug overlay: mouse-controlled ball + goal-collision zones (toggle: backtick)
     main.js         ← Entry point: loop, button bindings, init
 
 backend/            ← Python authoritative server
@@ -49,6 +50,7 @@ backend/            ← Python authoritative server
   room_registry.py  ← RoomRegistry + module-level singleton
   ws_handler.py     ← WebSocket connection handler (join, move, start_game)
   entrypoint.py     ← Starts HTTP (aiohttp, port 8080) + WS (port 8765)
+  server.py         ← Legacy monolithic server (Room + game_loop + registry + handler in one file; kept for reference)
 ```
 
 ## Backend design
