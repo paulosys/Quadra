@@ -232,7 +232,8 @@ class Room:
             dist = math.sqrt(dx * dx + dy * dy)
             if 0 < dist < HURRICANE_RADIUS:
                 factor      = 1.0 - dist / HURRICANE_RADIUS
-                angle_delta = HURRICANE_STRENGTH * factor
+                speed       = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
+                angle_delta = HURRICANE_STRENGTH * factor * max(1.0, speed / BALL_SPEED_INIT)
                 cos_a = math.cos(angle_delta)
                 sin_a = math.sin(angle_delta)
                 ball.vx, ball.vy = (
