@@ -23,7 +23,7 @@ from config import (
     PORTAL_RADIUS, PORTAL_ROT_SPEED,
     SNITCH_TURN_CHANCE,
     SPEED_BOOST_FACTOR, TICK_DT,
-    HURRICANE_DURATION, HURRICANE_RADIUS, HURRICANE_STRENGTH,
+    HURRICANE_DURATION, HURRICANE_PULL, HURRICANE_RADIUS, HURRICANE_STRENGTH,
     CORNER_POWERUP_SPAWN_MIN, CORNER_POWERUP_SPAWN_MAX,
     CORNER_CHARGE_TIME, CORNER_PROXIMITY, CORNER_GOAL_DURATION,
 )
@@ -330,8 +330,10 @@ class Room:
             dy = ball.y - cy
             dist = math.sqrt(dx * dx + dy * dy)
             if 0 < dist < HURRICANE_RADIUS:
-                factor      = 1.0 - dist / HURRICANE_RADIUS
-                speed       = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
+                factor = 1.0 - dist / HURRICANE_RADIUS
+                speed  = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
+
+                # 1. Rotate velocity vector — creates orbital spin
                 angle_delta = HURRICANE_STRENGTH * factor * max(1.0, speed / BALL_SPEED_INIT)
                 cos_a = math.cos(angle_delta)
                 sin_a = math.sin(angle_delta)
@@ -339,6 +341,12 @@ class Room:
                     ball.vx * cos_a - ball.vy * sin_a,
                     ball.vx * sin_a + ball.vy * cos_a,
                 )
+
+                # 2. Centripetal pull toward center — keeps ball spiraling inward
+                #    so it truly orbits and exits tangentially when it escapes
+                pull = HURRICANE_PULL * factor
+                ball.vx -= (dx / dist) * pull
+                ball.vy -= (dy / dist) * pull
 
     def _tick_portals(self) -> None:
         """Advance portal rotation, handle entry delay, and teleport balls."""

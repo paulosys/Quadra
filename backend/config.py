@@ -57,9 +57,10 @@ PORTAL_COOLDOWN:    float = float(os.getenv("PORTAL_COOLDOWN",    0.4))
 PORTAL_ROT_SPEED:   float = float(os.getenv("PORTAL_ROT_SPEED",   1.5))   # rad/s (~4s per full spin)
 PORTAL_ENTRY_DELAY: float = float(os.getenv("PORTAL_ENTRY_DELAY", 0.25))  # seconds before teleport fires
 
-HURRICANE_DURATION: float = float(os.getenv("HURRICANE_DURATION", 10.0))
+HURRICANE_DURATION: float = float(os.getenv("HURRICANE_DURATION", 6.0))
 HURRICANE_RADIUS:   float = float(os.getenv("HURRICANE_RADIUS",   0.30))
-HURRICANE_STRENGTH: float = float(os.getenv("HURRICANE_STRENGTH", 0.025))
+HURRICANE_STRENGTH: float = float(os.getenv("HURRICANE_STRENGTH", 0.10))   # rad/tick rotation — high = strong spin
+HURRICANE_PULL:     float = float(os.getenv("HURRICANE_PULL",     0.004))  # centripetal accel toward center
 
 # ── Corner power-ups (4-player only) ───────────────────────────────────────────
 CORNER_POWERUP_SPAWN_MIN: float = float(os.getenv("CORNER_POWERUP_SPAWN_MIN", 15.0))
