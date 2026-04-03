@@ -51,9 +51,47 @@ export function playPowerupCollect(type) {
     setTimeout(() => _tone(1320, 0.08, 'sine', 0.18), 140);
     setTimeout(() => _tone(1760, 0.18, 'sine', 0.22), 210);
     setTimeout(() => _tone(1320, 0.22, 'sine', 0.12, 440), 360);
+  } else if (type === 'hurricane') {
+    // Deep whooshing vortex
+    _tone(80,  0.6, 'sawtooth', 0.22, 180);
+    setTimeout(() => _tone(160, 0.5, 'sawtooth', 0.15, 80),  200);
+    setTimeout(() => _tone(220, 0.4, 'sine',     0.18, 440), 350);
   } else {
     _tone(300, 0.28, 'sawtooth', 0.25, 900);
   }
+}
+
+let _hurricaneAmbientTick = 0;
+
+export function tickHurricaneAmbient(active) {
+  if (!active) { _hurricaneAmbientTick = 0; return; }
+  _hurricaneAmbientTick--;
+  if (_hurricaneAmbientTick > 0) return;
+  _hurricaneAmbientTick = 96; // ~1.6 s at 60 fps
+
+  const ctx = _getCtx(); if (!ctx) return;
+  const dur = 1.6;
+  const sr  = ctx.sampleRate;
+  const buf = ctx.createBuffer(1, Math.floor(sr * dur), sr);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+  const src    = ctx.createBufferSource();
+  src.buffer   = buf;
+  const filter = ctx.createBiquadFilter();
+  filter.type  = 'bandpass';
+  filter.frequency.setValueAtTime(250, ctx.currentTime);
+  filter.frequency.exponentialRampToValueAtTime(550, ctx.currentTime + 0.8);
+  filter.frequency.exponentialRampToValueAtTime(250, ctx.currentTime + dur);
+  filter.Q.value = 1.8;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.001, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.25);
+  gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 1.2);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+
+  src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  src.start(); src.stop(ctx.currentTime + dur);
 }
 
 export function playEliminated() {

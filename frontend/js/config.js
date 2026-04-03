@@ -11,6 +11,7 @@ export const GOAL_HALF_H     = 0.168;
 export const GOAL_HALF_V     = 0.168;
 export const POWERUP_RADIUS  = 0.038;
 export const PORTAL_RADIUS   = 0.045;
+export const HURRICANE_RADIUS = 0.30;
 export const PADDLE_SPEED    = 0.012;
 
 export const SIDE_LABELS = ['Topo', 'Baixo', 'Esquerda', 'Direita'];

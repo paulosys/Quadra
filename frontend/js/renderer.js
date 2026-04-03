@@ -5,6 +5,7 @@
 import {
   FIELD_MARGIN, PADDLE_THICK, PADDLE_LEN_H, PADDLE_LEN_V,
   BALL_R, GOAL_DEPTH, GOAL_HALF_H, GOAL_HALF_V, POWERUP_RADIUS, PORTAL_RADIUS,
+  HURRICANE_RADIUS,
 } from './config.js';
 import { state } from './state.js';
 import { spawnFire, updateAndDrawFire } from './particles.js';
@@ -47,6 +48,7 @@ export function draw() {
   _drawFieldBorder(fL, fT, fW, fH);
   _eraseGoalBorders(st, S, fT, fB, fL, fR, gwH, gwV, go);
 
+  if (st.hurricane_active) _drawHurricane(S, Date.now());
   for (const pu of (st.powerups || [])) _drawPowerup(pu, S);
   _drawPortals(st.portals || [], S);
 
@@ -327,6 +329,59 @@ function _drawSinglePortal(x, y, r, t) {
   ctx.restore();
 }
 
+function _drawHurricane(S, t) {
+  const cx   = S * 0.5, cy = S * 0.5;
+  const r    = HURRICANE_RADIUS * S;
+  const spin = (t / 1600) % (Math.PI * 2);
+
+  ctx.save();
+
+  // Subtle tinted field area
+  const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  halo.addColorStop(0,   'rgba(0,200,180,0.10)');
+  halo.addColorStop(0.6, 'rgba(0,160,140,0.05)');
+  halo.addColorStop(1,   'rgba(0,80,60,0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+  ctx.translate(cx, cy);
+
+  // 3 spiral arms rotating clockwise
+  for (let arm = 0; arm < 3; arm++) {
+    ctx.save();
+    ctx.rotate(spin + (arm * Math.PI * 2 / 3));
+    const alpha = 0.18 + 0.07 * Math.sin(t / 700 + arm);
+    ctx.strokeStyle = `rgba(0,220,200,${alpha.toFixed(2)})`;
+    ctx.lineWidth   = 2.5;
+    ctx.shadowColor = '#00ddcc';
+    ctx.shadowBlur  = 10;
+    ctx.beginPath();
+    const steps = 64;
+    for (let i = 0; i <= steps; i++) {
+      const frac  = i / steps;
+      const rad   = frac * r * 0.82;
+      const angle = frac * Math.PI * 1.6;
+      const px    = Math.cos(angle) * rad;
+      const py    = Math.sin(angle) * rad;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.shadowBlur = 0;
+
+  // Eye — small glowing dot at center
+  const eyeR = r * 0.055;
+  const eye  = ctx.createRadialGradient(0, 0, 0, 0, 0, eyeR);
+  eye.addColorStop(0,   'rgba(200,255,250,0.75)');
+  eye.addColorStop(0.5, 'rgba(0,200,180,0.4)');
+  eye.addColorStop(1,   'rgba(0,120,100,0)');
+  ctx.fillStyle = eye;
+  ctx.beginPath(); ctx.arc(0, 0, eyeR, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
 function _drawPowerup(pu, S) {
   const x  = pu.x * S, y = pu.y * S;
   const r  = POWERUP_RADIUS * S;
@@ -339,6 +394,7 @@ function _drawPowerup(pu, S) {
     speed:      { fill: 'rgba(255,136,0,0.18)',    stroke: '#f80',    shadow: '#f80',    label: '⚡', font: `${Math.floor(pr * 1.2)}px Arial` },
     snitch:     { fill: 'rgba(255,215,0,0.18)',    stroke: '#ffd700', shadow: '#ffd700', label: '✦', font: `${Math.floor(pr * 1.15)}px Arial` },
     portal:     { fill: 'rgba(160,60,255,0.18)',   stroke: '#a040ff', shadow: '#a040ff', label: '◈', font: `${Math.floor(pr * 1.1)}px Arial` },
+    hurricane:  { fill: 'rgba(0,200,180,0.18)',    stroke: '#00c8b4', shadow: '#00c8b4', label: '🌀', font: `${Math.floor(pr * 1.1)}px Arial` },
   };
   const s = styles[pu.type] || styles.speed;
   ctx.fillStyle   = s.fill;

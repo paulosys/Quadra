@@ -22,6 +22,7 @@ from config import (
     PORTAL_COOLDOWN, PORTAL_DURATION, PORTAL_MIN_DIST, PORTAL_RADIUS,
     SNITCH_TURN_CHANCE,
     SPEED_BOOST_FACTOR, TICK_DT,
+    HURRICANE_DURATION, HURRICANE_RADIUS, HURRICANE_STRENGTH,
 )
 from models import Ball, Portal, PowerUp, Side, SIDE_NAMES
 from physics import PhysicsEngine
@@ -55,6 +56,9 @@ class Room:
         # Portal effect (room-level)
         self.portals:       List[Portal] = []
         self._portal_timer: float        = 0.0
+
+        # Hurricane effect (room-level)
+        self._hurricane_timer: float = 0.0
 
         self._id_counter = 0
         self._physics    = PhysicsEngine()
@@ -92,6 +96,7 @@ class Room:
         self._goal_move_time    = 0.0
         self.portals      = []
         self._portal_timer = 0.0
+        self._hurricane_timer = 0.0
 
     def reset_for_new_game(self) -> None:
         """Reset between full games (post-gameover)."""
@@ -115,6 +120,7 @@ class Room:
         self._tick_snitch_movement()
         self._tick_moving_goals()
         self._tick_portals()
+        self._tick_hurricane()
 
         collected = self._powerup_mgr.tick(self.powerups, self.balls, self._next_id)
         self._apply_room_effects(collected)
@@ -186,6 +192,8 @@ class Room:
                 self._goal_moving_timer = MOVING_GOAL_DURATION
             elif ptype == "portal":
                 self._create_portals()
+            elif ptype == "hurricane":
+                self._hurricane_timer = HURRICANE_DURATION
 
     def _create_portals(self) -> None:
         """Spawn two portals at random positions at least PORTAL_MIN_DIST apart."""
@@ -204,6 +212,26 @@ class Room:
                 ]
                 self._portal_timer = PORTAL_DURATION
                 return
+
+    def _tick_hurricane(self) -> None:
+        """Apply rotational vortex force to balls within hurricane radius."""
+        if self._hurricane_timer <= 0:
+            return
+        self._hurricane_timer -= TICK_DT
+        cx, cy = 0.5, 0.5
+        for ball in self.balls:
+            dx = ball.x - cx
+            dy = ball.y - cy
+            dist = math.sqrt(dx * dx + dy * dy)
+            if 0 < dist < HURRICANE_RADIUS:
+                factor      = 1.0 - dist / HURRICANE_RADIUS
+                angle_delta = HURRICANE_STRENGTH * factor
+                cos_a = math.cos(angle_delta)
+                sin_a = math.sin(angle_delta)
+                ball.vx, ball.vy = (
+                    ball.vx * cos_a - ball.vy * sin_a,
+                    ball.vx * sin_a + ball.vy * cos_a,
+                )
 
     def _tick_portals(self) -> None:
         """Tick down portal timer and teleport balls that enter a portal."""
@@ -262,7 +290,8 @@ class Room:
             "collected":     collected or [],
             "goal_offsets":  self.goal_offsets[:],
             "goal_moving":   self._goal_moving_timer > 0,
-            "portals":       [p.to_dict() for p in self.portals],
+            "portals":          [p.to_dict() for p in self.portals],
+            "hurricane_active": self._hurricane_timer > 0,
         }
 
     # ── Internals ─────────────────────────────────────────────────────────────
