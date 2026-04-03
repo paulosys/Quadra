@@ -26,12 +26,13 @@ class Ball:
     y:           float
     vx:          float
     vy:          float
-    boosted:      bool          = False
-    boost_timer:  float         = 0.0
-    bounce:       bool          = False
-    snitched:     bool          = False
-    snitch_timer: float         = 0.0
-    last_touch:   Optional[int] = None
+    boosted:         bool          = False
+    boost_timer:     float         = 0.0
+    bounce:          bool          = False
+    snitched:        bool          = False
+    snitch_timer:    float         = 0.0
+    portal_cooldown: float         = 0.0
+    last_touch:      Optional[int] = None
 
     @property
     def speed(self) -> float:
@@ -59,3 +60,14 @@ class PowerUp:
 
     def to_dict(self) -> dict:
         return {"id": self.id, "x": self.x, "y": self.y, "type": self.type}
+
+
+@dataclass
+class Portal:
+    id:      int
+    x:       float
+    y:       float
+    pair_id: int   # id of the linked partner portal
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "x": self.x, "y": self.y, "pair_id": self.pair_id}

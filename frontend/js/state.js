@@ -21,6 +21,7 @@ export const state = {
     powerup_queue: [],
     goal_offsets:  [0, 0, 0, 0],
     goal_moving:   false,
+    portals:       [],
   },
 
   /** Interpolated display positions (updated each frame in renderer) */

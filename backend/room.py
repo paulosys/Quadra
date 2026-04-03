@@ -17,12 +17,13 @@ import websockets
 from websockets.server import WebSocketServerProtocol
 
 from config import (
-    BALL_SPEED_INIT, BALL_SPEED_MAX, LIVES_START,
+    BALL_R, BALL_SPEED_INIT, BALL_SPEED_MAX, FIELD_MARGIN, LIVES_START,
     MOVING_GOAL_AMP, MOVING_GOAL_DURATION, MOVING_GOAL_SPEED,
+    PORTAL_COOLDOWN, PORTAL_DURATION, PORTAL_MIN_DIST, PORTAL_RADIUS,
     SNITCH_TURN_CHANCE,
     SPEED_BOOST_FACTOR, TICK_DT,
 )
-from models import Ball, PowerUp, Side, SIDE_NAMES
+from models import Ball, Portal, PowerUp, Side, SIDE_NAMES
 from physics import PhysicsEngine
 from powerups import PowerUpManager
 
@@ -50,6 +51,10 @@ class Room:
         self.goal_offsets:       list[float] = [0.0, 0.0, 0.0, 0.0]
         self._goal_moving_timer: float       = 0.0
         self._goal_move_time:    float       = 0.0
+
+        # Portal effect (room-level)
+        self.portals:       List[Portal] = []
+        self._portal_timer: float        = 0.0
 
         self._id_counter = 0
         self._physics    = PhysicsEngine()
@@ -85,6 +90,8 @@ class Room:
         self.goal_offsets       = [0.0, 0.0, 0.0, 0.0]
         self._goal_moving_timer = 0.0
         self._goal_move_time    = 0.0
+        self.portals      = []
+        self._portal_timer = 0.0
 
     def reset_for_new_game(self) -> None:
         """Reset between full games (post-gameover)."""
@@ -107,6 +114,7 @@ class Room:
         self._tick_boost_timers()
         self._tick_snitch_movement()
         self._tick_moving_goals()
+        self._tick_portals()
 
         collected = self._powerup_mgr.tick(self.powerups, self.balls, self._next_id)
         self._apply_room_effects(collected)
@@ -176,6 +184,55 @@ class Room:
                 if self._goal_moving_timer <= 0:
                     self._goal_move_time = 0.0
                 self._goal_moving_timer = MOVING_GOAL_DURATION
+            elif ptype == "portal":
+                self._create_portals()
+
+    def _create_portals(self) -> None:
+        """Spawn two portals at random positions at least PORTAL_MIN_DIST apart."""
+        fm = FIELD_MARGIN + 0.12
+        for _ in range(60):
+            x1 = random.uniform(fm, 1.0 - fm)
+            y1 = random.uniform(fm, 1.0 - fm)
+            x2 = random.uniform(fm, 1.0 - fm)
+            y2 = random.uniform(fm, 1.0 - fm)
+            if math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) >= PORTAL_MIN_DIST:
+                id1 = self._next_id()
+                id2 = self._next_id()
+                self.portals      = [
+                    Portal(id=id1, x=x1, y=y1, pair_id=id2),
+                    Portal(id=id2, x=x2, y=y2, pair_id=id1),
+                ]
+                self._portal_timer = PORTAL_DURATION
+                return
+
+    def _tick_portals(self) -> None:
+        """Tick down portal timer and teleport balls that enter a portal."""
+        for ball in self.balls:
+            if ball.portal_cooldown > 0:
+                ball.portal_cooldown = max(0.0, ball.portal_cooldown - TICK_DT)
+
+        if not self.portals:
+            return
+
+        self._portal_timer -= TICK_DT
+        if self._portal_timer <= 0:
+            self.portals = []
+            return
+
+        portal_map = {p.id: p for p in self.portals}
+        for ball in self.balls:
+            if ball.portal_cooldown > 0:
+                continue
+            for portal in self.portals:
+                dx = ball.x - portal.x
+                dy = ball.y - portal.y
+                if math.sqrt(dx * dx + dy * dy) < BALL_R + PORTAL_RADIUS:
+                    partner = portal_map.get(portal.pair_id)
+                    if partner:
+                        ball.x = partner.x
+                        ball.y = partner.y
+                        ball.portal_cooldown = PORTAL_COOLDOWN
+                    break  # one teleport per ball per tick
 
     # ── Networking ────────────────────────────────────────────────────────────
 
@@ -205,6 +262,7 @@ class Room:
             "collected":     collected or [],
             "goal_offsets":  self.goal_offsets[:],
             "goal_moving":   self._goal_moving_timer > 0,
+            "portals":       [p.to_dict() for p in self.portals],
         }
 
     # ── Internals ─────────────────────────────────────────────────────────────

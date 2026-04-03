@@ -4,7 +4,7 @@
  */
 import {
   FIELD_MARGIN, PADDLE_THICK, PADDLE_LEN_H, PADDLE_LEN_V,
-  BALL_R, GOAL_DEPTH, GOAL_HALF_H, GOAL_HALF_V, POWERUP_RADIUS,
+  BALL_R, GOAL_DEPTH, GOAL_HALF_H, GOAL_HALF_V, POWERUP_RADIUS, PORTAL_RADIUS,
 } from './config.js';
 import { state } from './state.js';
 import { spawnFire, updateAndDrawFire } from './particles.js';
@@ -48,6 +48,7 @@ export function draw() {
   _eraseGoalBorders(st, S, fT, fB, fL, fR, gwH, gwV, go);
 
   for (const pu of (st.powerups || [])) _drawPowerup(pu, S);
+  _drawPortals(st.portals || [], S);
 
   _drawPaddles(st, pt, fT, fB, fL, fR, S);
   updateAndDrawFire(ctx);
@@ -265,6 +266,67 @@ function _drawSnitch(bx, by, br) {
   ctx.restore();
 }
 
+function _drawPortals(portals, S) {
+  if (!portals || portals.length < 2) return;
+  const t  = Date.now();
+  const x0 = portals[0].x * S, y0 = portals[0].y * S;
+  const x1 = portals[1].x * S, y1 = portals[1].y * S;
+
+  // Dashed connecting beam between the two portals
+  ctx.save();
+  const pulse = Math.sin(t / 500) * 0.5 + 0.5;
+  ctx.strokeStyle = `rgba(180,80,255,${(0.12 + pulse * 0.08).toFixed(2)})`;
+  ctx.lineWidth   = 1.5;
+  ctx.setLineDash([5, 9]);
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  _drawSinglePortal(x0, y0, PORTAL_RADIUS * S, t);
+  _drawSinglePortal(x1, y1, PORTAL_RADIUS * S, t);
+}
+
+function _drawSinglePortal(x, y, r, t) {
+  const spin  = (t / 900) % (Math.PI * 2);
+  const pulse = Math.sin(t / 450) * 0.5 + 0.5;
+  const pr    = r * (1 + 0.08 * Math.sin(t / 650));
+
+  ctx.save();
+
+  // Outer glow
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, pr * 2.2);
+  glow.addColorStop(0,   `rgba(160,60,255,${(0.28 + pulse * 0.12).toFixed(2)})`);
+  glow.addColorStop(0.6, 'rgba(100,30,200,0.08)');
+  glow.addColorStop(1,   'rgba(60,0,180,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(x, y, pr * 2.2, 0, Math.PI * 2); ctx.fill();
+
+  ctx.translate(x, y);
+
+  // Two spinning arcs (purple + cyan, opposite halves)
+  ctx.rotate(spin);
+  ctx.lineWidth   = 2.5;
+  ctx.shadowBlur  = 10;
+  ctx.strokeStyle = `rgba(220,130,255,${(0.65 + pulse * 0.25).toFixed(2)})`;
+  ctx.shadowColor = '#c060ff';
+  ctx.beginPath(); ctx.arc(0, 0, pr * 0.72, 0, Math.PI * 1.35); ctx.stroke();
+  ctx.rotate(Math.PI);
+  ctx.strokeStyle = `rgba(100,210,255,${(0.65 + pulse * 0.25).toFixed(2)})`;
+  ctx.shadowColor = '#40c0ff';
+  ctx.beginPath(); ctx.arc(0, 0, pr * 0.72, 0, Math.PI * 1.35); ctx.stroke();
+  ctx.shadowBlur  = 0;
+  ctx.rotate(-spin - Math.PI);
+
+  // Outer ring
+  ctx.strokeStyle = `rgba(200,90,255,${(0.80 + pulse * 0.15).toFixed(2)})`;
+  ctx.lineWidth   = 2;
+  ctx.shadowColor = '#9030ff';
+  ctx.shadowBlur  = 14;
+  ctx.beginPath(); ctx.arc(0, 0, pr, 0, Math.PI * 2); ctx.stroke();
+
+  ctx.restore();
+}
+
 function _drawPowerup(pu, S) {
   const x  = pu.x * S, y = pu.y * S;
   const r  = POWERUP_RADIUS * S;
@@ -276,6 +338,7 @@ function _drawPowerup(pu, S) {
     movinggoal: { fill: 'rgba(180,80,255,0.18)',   stroke: '#b45fff', shadow: '#b45fff', label: '↔', font: `${Math.floor(pr * 1.1)}px Arial` },
     speed:      { fill: 'rgba(255,136,0,0.18)',    stroke: '#f80',    shadow: '#f80',    label: '⚡', font: `${Math.floor(pr * 1.2)}px Arial` },
     snitch:     { fill: 'rgba(255,215,0,0.18)',    stroke: '#ffd700', shadow: '#ffd700', label: '✦', font: `${Math.floor(pr * 1.15)}px Arial` },
+    portal:     { fill: 'rgba(160,60,255,0.18)',   stroke: '#a040ff', shadow: '#a040ff', label: '◈', font: `${Math.floor(pr * 1.1)}px Arial` },
   };
   const s = styles[pu.type] || styles.speed;
   ctx.fillStyle   = s.fill;

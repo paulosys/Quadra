@@ -145,6 +145,7 @@ canvas {
 .pq-item.speed       { background: rgba(255,136,0,.12);  border-color: #f80;    color: #f80; font-size: .9rem; }
 .pq-item.movinggoal  { background: rgba(180,80,255,.12); border-color: #b45fff; color: #b45fff; }
 .pq-item.snitch      { background: rgba(255,215,0,.12);  border-color: #ffd700; color: #ffd700; }
+.pq-item.portal      { background: rgba(160,60,255,.12); border-color: #a040ff; color: #a040ff; }
 .pq-item:first-child { width: 40px; height: 40px; font-size: .95rem; opacity: 1; }
 .pq-item:first-child.speed { font-size: 1.1rem; }
 .pq-item:not(:first-child) { opacity: 0.4; }
