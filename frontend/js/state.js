@@ -21,8 +21,10 @@ export const state = {
     powerup_queue: [],
     goal_offsets:  [0, 0, 0, 0],
     goal_moving:   false,
-    portals:          [],
-    hurricane_active: false,
+    portals:             [],
+    hurricane_active:    false,
+    corner_powerups:     [null, null, null, null],
+    corner_goals_active: [false, false, false, false],
   },
 
   /** Interpolated display positions (updated each frame in renderer) */

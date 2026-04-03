@@ -24,10 +24,22 @@ from config import (
     SNITCH_TURN_CHANCE,
     SPEED_BOOST_FACTOR, TICK_DT,
     HURRICANE_DURATION, HURRICANE_RADIUS, HURRICANE_STRENGTH,
+    CORNER_POWERUP_SPAWN_MIN, CORNER_POWERUP_SPAWN_MAX,
+    CORNER_CHARGE_TIME, CORNER_PROXIMITY, CORNER_GOAL_DURATION,
 )
-from models import Ball, Portal, PowerUp, Side, SIDE_NAMES
+from models import Ball, CornerPowerUp, Portal, PowerUp, Side, SIDE_NAMES
 from physics import PhysicsEngine
 from powerups import PowerUpManager
+
+# Corner definitions: (owner_a, owner_b, adv_a, adv_b, check_a, check_b)
+# check_*: (slot, 'low'|'high')  — 'low' = paddle near 0, 'high' = paddle near 1
+_CORNER_DEFS = [
+    (0, 2, 1, 3, (0, 'low'),  (2, 'low')),   # TL: TOP+LEFT  → adversaries BOTTOM+RIGHT
+    (0, 3, 1, 2, (0, 'high'), (3, 'low')),   # TR: TOP+RIGHT → adversaries BOTTOM+LEFT
+    (1, 2, 0, 3, (1, 'low'),  (2, 'high')),  # BL: BOT+LEFT  → adversaries TOP+RIGHT
+    (1, 3, 0, 2, (1, 'high'), (3, 'high')),  # BR: BOT+RIGHT → adversaries TOP+LEFT
+]
+_CORNER_POWERUP_TYPES = ["movinggoal"]
 
 
 class Room:
@@ -61,6 +73,16 @@ class Room:
 
         # Hurricane effect (room-level)
         self._hurricane_timer: float = 0.0
+
+        # Corner power-up system (only active with 4 players)
+        self.corner_powerups:     list[Optional[CornerPowerUp]] = [None, None, None, None]
+        self._corner_charge:      list[float]                   = [0.0, 0.0, 0.0, 0.0]
+        self._corner_spawn_timer: float                         = CORNER_POWERUP_SPAWN_MIN
+        # Per-slot moving-goal timers triggered by corner activation
+        self._corner_goal_timers:    list[float] = [0.0, 0.0, 0.0, 0.0]
+        self._corner_goal_move_time: float       = 0.0
+
+        self.debug_freeze_goals: bool = False
 
         self._id_counter = 0
         self._physics    = PhysicsEngine()
@@ -100,6 +122,11 @@ class Room:
         self._portal_timer       = 0.0
         self._pending_teleports  = {}
         self._hurricane_timer = 0.0
+        self.corner_powerups         = [None, None, None, None]
+        self._corner_charge          = [0.0, 0.0, 0.0, 0.0]
+        self._corner_spawn_timer     = CORNER_POWERUP_SPAWN_MIN
+        self._corner_goal_timers     = [0.0, 0.0, 0.0, 0.0]
+        self._corner_goal_move_time  = 0.0
 
     def reset_for_new_game(self) -> None:
         """Reset between full games (post-gameover)."""
@@ -124,6 +151,7 @@ class Room:
         self._tick_moving_goals()
         self._tick_portals()
         self._tick_hurricane()
+        self._tick_corner_powerups()
 
         collected = self._powerup_mgr.tick(self.powerups, self.balls, self._next_id)
         self._apply_room_effects(collected)
@@ -137,7 +165,7 @@ class Room:
             result = self._physics.tick_ball(
                 ball, self.paddles, self.eliminated, players_set, self.goal_offsets
             )
-            if result is not None and scored is None:
+            if result is not None and scored is None and not self.debug_freeze_goals:
                 scored = result
                 scorer = ball.last_touch
 
@@ -174,19 +202,90 @@ class Room:
             ball.vy = math.sin(angle) * spd
 
     def _tick_moving_goals(self) -> None:
-        if self._goal_moving_timer <= 0:
+        phases = [0.0, math.pi, math.pi / 2, 3 * math.pi / 2]
+
+        # Regular powerup: affects all 4 goals
+        if self._goal_moving_timer > 0:
+            self._goal_moving_timer -= TICK_DT
+            self._goal_move_time    += TICK_DT
+
+        # Corner effect: per-slot timers
+        self._corner_goal_move_time += TICK_DT
+        for i in range(4):
+            if self._corner_goal_timers[i] > 0:
+                self._corner_goal_timers[i] -= TICK_DT
+
+        # Build final offsets: regular takes priority; corner fills in where regular is inactive
+        new_offsets = [0.0, 0.0, 0.0, 0.0]
+        for i in range(4):
+            reg = 0.0
+            if self._goal_moving_timer > 0:
+                reg = MOVING_GOAL_AMP * math.sin(self._goal_move_time * MOVING_GOAL_SPEED + phases[i])
+            crn = 0.0
+            if self._corner_goal_timers[i] > 0:
+                crn = MOVING_GOAL_AMP * math.sin(self._corner_goal_move_time * MOVING_GOAL_SPEED + phases[i])
+            new_offsets[i] = reg if self._goal_moving_timer > 0 else crn
+        self.goal_offsets = new_offsets
+
+    def _tick_corner_powerups(self) -> None:
+        """Spawn corner power-ups and handle activation when both owners are near."""
+        if len(self.players) < 4:
+            # Clear corners if a player leaves mid-game
+            self.corner_powerups  = [None, None, None, None]
+            self._corner_charge   = [0.0, 0.0, 0.0, 0.0]
             return
-        self._goal_moving_timer -= TICK_DT
-        self._goal_move_time    += TICK_DT
-        t = self._goal_move_time * MOVING_GOAL_SPEED
-        self.goal_offsets = [
-            MOVING_GOAL_AMP * math.sin(t),
-            MOVING_GOAL_AMP * math.sin(t + math.pi),
-            MOVING_GOAL_AMP * math.sin(t + math.pi / 2),
-            MOVING_GOAL_AMP * math.sin(t + 3 * math.pi / 2),
-        ]
-        if self._goal_moving_timer <= 0:
-            self.goal_offsets = [0.0, 0.0, 0.0, 0.0]
+
+        # Spawn: only one active corner power-up at a time
+        if not any(cp is not None for cp in self.corner_powerups):
+            self._corner_spawn_timer -= TICK_DT
+            if self._corner_spawn_timer <= 0:
+                corner = random.randint(0, 3)
+                ptype  = random.choice(_CORNER_POWERUP_TYPES)
+                self.corner_powerups[corner] = CornerPowerUp(corner=corner, type=ptype)
+                self._corner_spawn_timer = random.uniform(
+                    CORNER_POWERUP_SPAWN_MIN, CORNER_POWERUP_SPAWN_MAX
+                )
+
+        # Check activation for each occupied corner
+        for corner, cp in enumerate(self.corner_powerups):
+            if cp is None:
+                self._corner_charge[corner] = 0.0
+                continue
+            if self._both_owners_near(corner):
+                self._corner_charge[corner] += TICK_DT
+                if self._corner_charge[corner] >= CORNER_CHARGE_TIME:
+                    self._activate_corner_power(corner, cp.type)
+                    self.corner_powerups[corner]  = None
+                    self._corner_charge[corner]   = 0.0
+                    self._corner_spawn_timer = random.uniform(
+                        CORNER_POWERUP_SPAWN_MIN, CORNER_POWERUP_SPAWN_MAX
+                    )
+            else:
+                # Slowly decay charge when owners leave
+                self._corner_charge[corner] = max(
+                    0.0, self._corner_charge[corner] - TICK_DT * 2
+                )
+
+    def _both_owners_near(self, corner: int) -> bool:
+        """Return True when both owner paddles are positioned near the given corner."""
+        owner_a, owner_b, _, _, check_a, check_b = _CORNER_DEFS[corner]
+        for slot, (chk_slot, side) in ((owner_a, check_a), (owner_b, check_b)):
+            if slot not in self.players or self.eliminated[slot]:
+                return False
+            pos = self.paddles[chk_slot]
+            if side == 'low'  and pos > CORNER_PROXIMITY:
+                return False
+            if side == 'high' and pos < 1.0 - CORNER_PROXIMITY:
+                return False
+        return True
+
+    def _activate_corner_power(self, corner: int, ptype: str) -> None:
+        """Apply the corner power-up effect to the two adversary players."""
+        _, _, adv_a, adv_b, _, _ = _CORNER_DEFS[corner]
+        if ptype == "movinggoal":
+            self._corner_goal_timers[adv_a] = CORNER_GOAL_DURATION
+            self._corner_goal_timers[adv_b] = CORNER_GOAL_DURATION
+            self._corner_goal_move_time = 0.0
 
     def _apply_room_effects(self, collected: List[str]) -> None:
         """Apply powerup effects that live at room level (not ball level)."""
@@ -346,6 +445,13 @@ class Room:
             "goal_moving":   self._goal_moving_timer > 0,
             "portals":          [p.to_dict() for p in self.portals],
             "hurricane_active": self._hurricane_timer > 0,
+            "corner_powerups":  [
+                {**cp.to_dict(), "charge": self._corner_charge[i]}
+                if cp is not None else None
+                for i, cp in enumerate(self.corner_powerups)
+            ],
+            "corner_goals_active": [t > 0 for t in self._corner_goal_timers],
+            "debug_freeze_goals":  self.debug_freeze_goals,
         }
 
     # ── Internals ─────────────────────────────────────────────────────────────

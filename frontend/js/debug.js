@@ -9,6 +9,7 @@ import {
   GOAL_DEPTH, GOAL_HALF_H, GOAL_HALF_V,
 } from './config.js';
 import { state } from './state.js';
+import { send } from './network.js';
 
 const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
@@ -27,6 +28,7 @@ export function initDebug() {
   window.addEventListener('keydown', e => {
     if (e.code === 'Backquote') { active = !active; e.preventDefault(); }
     if (e.code === 'KeyZ' && active) { showZones = !showZones; }
+    if (e.code === 'KeyG' && active) { send({ type: 'debug_toggle_freeze' }); }
   });
 }
 
@@ -132,8 +134,9 @@ export function debugTick() {
   ctx.save();
   ctx.font = 'bold 11px monospace';
 
+  const frozen = state.server.debug_freeze_goals || false;
   const hudLines = [
-    `[ DEBUG ] backtick=off  Z=zonas(${showZones?'on':'off'})`,
+    `[ DEBUG ] backtick=off  Z=zonas(${showZones?'on':'off'})  G=gols(${frozen?'FROZEN':'live'})`,
     `pos: (${nx.toFixed(3)}, ${ny.toFixed(3)})`,
     activeGoal   ? `\u25cf GOL: ${activeGoal.label}` :
     activeInGoal ? `\u25cf Na rede: ${activeInGoal.label}` :
@@ -142,8 +145,10 @@ export function debugTick() {
 
   hudLines.forEach((line, i) => {
     const isStatus = i === 2;
+    const isHeader = i === 0;
     ctx.fillStyle = isStatus
       ? (activeGoal ? '#ff4444' : activeInGoal ? '#ffbb00' : '#aaffcc')
+      : isHeader && frozen ? '#ff8800'
       : '#00ffaa';
     ctx.fillText(line, 8, 14 + i * 15);
   });

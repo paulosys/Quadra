@@ -61,6 +61,13 @@ HURRICANE_DURATION: float = float(os.getenv("HURRICANE_DURATION", 10.0))
 HURRICANE_RADIUS:   float = float(os.getenv("HURRICANE_RADIUS",   0.30))
 HURRICANE_STRENGTH: float = float(os.getenv("HURRICANE_STRENGTH", 0.025))
 
+# ── Corner power-ups (4-player only) ───────────────────────────────────────────
+CORNER_POWERUP_SPAWN_MIN: float = float(os.getenv("CORNER_POWERUP_SPAWN_MIN", 15.0))
+CORNER_POWERUP_SPAWN_MAX: float = float(os.getenv("CORNER_POWERUP_SPAWN_MAX", 25.0))
+CORNER_CHARGE_TIME:       float = float(os.getenv("CORNER_CHARGE_TIME",       1.0))
+CORNER_PROXIMITY:         float = float(os.getenv("CORNER_PROXIMITY",         0.10))
+CORNER_GOAL_DURATION:     float = float(os.getenv("CORNER_GOAL_DURATION",     9.0))
+
 # ── Network ────────────────────────────────────────────────────────────────────
 WS_HOST:          str   = os.getenv("WS_HOST",          "0.0.0.0")
 WS_PORT:          int   = int(os.getenv("WS_PORT",       8765))

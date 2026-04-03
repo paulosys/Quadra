@@ -94,8 +94,11 @@ function _handleMessage(msg) {
       s.powerup_queue = msg.powerup_queue || [];
       s.goal_offsets  = msg.goal_offsets  || [0, 0, 0, 0];
       s.goal_moving   = msg.goal_moving   || false;
-      s.portals         = msg.portals          || [];
-      s.hurricane_active = msg.hurricane_active || false;
+      s.portals             = msg.portals               || [];
+      s.hurricane_active    = msg.hurricane_active      || false;
+      s.corner_powerups     = msg.corner_powerups       || [null, null, null, null];
+      s.corner_goals_active = msg.corner_goals_active   || [false, false, false, false];
+      s.debug_freeze_goals  = msg.debug_freeze_goals    || false;
       updateScoreUI();
       updatePowerupQueue(s.powerup_queue);
       break;

@@ -111,6 +111,10 @@ async def _message_loop(ws: WebSocketServerProtocol, room: Room, slot: int) -> N
                     if not (room.task and not room.task.done()):
                         room.task = asyncio.create_task(game_loop(room))
 
+        elif t == "debug_toggle_freeze":
+            async with room.lock:
+                room.debug_freeze_goals = not room.debug_freeze_goals
+
 
 async def _disconnect(room: Optional[Room], slot: Optional[int]) -> None:
     if room is None or slot is None:

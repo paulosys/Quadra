@@ -73,3 +73,12 @@ class Portal:
     def to_dict(self) -> dict:
         return {"id": self.id, "x": self.x, "y": self.y, "pair_id": self.pair_id,
                 "rotation": self.rotation}
+
+
+@dataclass
+class CornerPowerUp:
+    corner: int   # 0=TL, 1=TR, 2=BL, 3=BR
+    type:   str   # effect type (e.g. "movinggoal")
+
+    def to_dict(self) -> dict:
+        return {"corner": self.corner, "type": self.type}

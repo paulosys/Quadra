@@ -51,6 +51,7 @@ export function draw() {
   if (st.hurricane_active) _drawHurricane(S, Date.now());
   for (const pu of (st.powerups || [])) _drawPowerup(pu, S);
   _drawPortals(st.portals || [], S);
+  _drawCornerPowerups(st, S, fm);
 
   _drawPaddles(st, pt, fT, fB, fL, fR, S);
   updateAndDrawFire(ctx);
@@ -82,12 +83,16 @@ function _syncBallDisplayMap(st) {
   }
 }
 
+function _goalBg(st, slot) {
+  const cornerActive = st.corner_goals_active && st.corner_goals_active[slot];
+  return (st.goal_moving || cornerActive) ? '#6a3080' : '#7a2030';
+}
+
 function _drawGoalPockets(st, S, fT, fB, fL, fR, gd, gwH, gwV, go) {
-  const bg = (st.goal_moving) ? '#6a3080' : '#7a2030';
-  if (st.names[0] && !st.eliminated[0]) { const x=S*(0.5+go[0])-gwH, y=fT-gd, w=gwH*2, h=gd+4; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'top'); }
-  if (st.names[1] && !st.eliminated[1]) { const x=S*(0.5+go[1])-gwH, y=fB-4,  w=gwH*2, h=gd+4; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'bottom'); }
-  if (st.names[2] && !st.eliminated[2]) { const x=fL-gd, y=S*(0.5+go[2])-gwV, w=gd+4, h=gwV*2; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'left'); }
-  if (st.names[3] && !st.eliminated[3]) { const x=fR-4,  y=S*(0.5+go[3])-gwV, w=gd+4, h=gwV*2; ctx.fillStyle=bg; _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'right'); }
+  if (st.names[0] && !st.eliminated[0]) { const x=S*(0.5+go[0])-gwH, y=fT-gd, w=gwH*2, h=gd+4; ctx.fillStyle=_goalBg(st,0); _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'top'); }
+  if (st.names[1] && !st.eliminated[1]) { const x=S*(0.5+go[1])-gwH, y=fB-4,  w=gwH*2, h=gd+4; ctx.fillStyle=_goalBg(st,1); _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'bottom'); }
+  if (st.names[2] && !st.eliminated[2]) { const x=fL-gd, y=S*(0.5+go[2])-gwV, w=gd+4, h=gwV*2; ctx.fillStyle=_goalBg(st,2); _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'left'); }
+  if (st.names[3] && !st.eliminated[3]) { const x=fR-4,  y=S*(0.5+go[3])-gwV, w=gd+4, h=gwV*2; ctx.fillStyle=_goalBg(st,3); _rrFill(x,y,w,h,6); _drawNetLines(x,y,w,h,'right'); }
 }
 
 function _drawNetLines(x, y, w, h, side) {
@@ -448,6 +453,84 @@ function _drawPadV(cx, cy, thick, len, elim, isMe) {
   ctx.fillStyle = elim ? '#181818' : '#7a2030'; _rrFill(x-2, y-4, thick+4, len+8, 6);
   ctx.fillStyle = elim ? '#2a2a2a' : isMe ? '#4a90d9' : '#2a6db5'; _rrFill(x, y, thick, len, 5);
   if (!elim) { ctx.fillStyle = 'rgba(255,255,255,.18)'; _rrFill(x+2, y+4, thick*0.35, len-8, 2); }
+}
+
+function _drawCornerPowerups(st, S, fm) {
+  const cps = st.corner_powerups || [null, null, null, null];
+  // Corner centres (normalized): TL, TR, BL, BR — centred in the margin area
+  const cx = fm * 0.5, cy = fm * 0.5;
+  const CORNER_POS = [
+    { x: cx,     y: cy },
+    { x: 1 - cx, y: cy },
+    { x: cx,     y: 1 - cy },
+    { x: 1 - cx, y: 1 - cy },
+  ];
+  // Owner slot pairs per corner (must match backend _CORNER_DEFS)
+  const OWNER_COLORS = [
+    ['#4a90d9', '#4a90d9'],  // TL: slot 0 + slot 2
+    ['#4a90d9', '#4a90d9'],  // TR: slot 0 + slot 3
+    ['#4a90d9', '#4a90d9'],  // BL: slot 1 + slot 2
+    ['#4a90d9', '#4a90d9'],  // BR: slot 1 + slot 3
+  ];
+
+  const STYLES = {
+    movinggoal: { stroke: '#b45fff', shadow: '#b45fff', label: '↔' },
+  };
+
+  const t  = Date.now();
+  const r  = fm * 0.27 * S;
+
+  for (let i = 0; i < 4; i++) {
+    const cp = cps[i];
+    if (!cp) continue;
+
+    const px     = CORNER_POS[i].x * S;
+    const py     = CORNER_POS[i].y * S;
+    const charge = cp.charge || 0;
+    const pulse  = Math.sin(t / 700) * 0.5 + 0.5;
+    const pr     = r * (1 + 0.10 * pulse);
+    const s      = STYLES[cp.type] || STYLES.movinggoal;
+
+    ctx.save();
+
+    // Background glow
+    const glow = ctx.createRadialGradient(px, py, 0, px, py, pr * 2);
+    glow.addColorStop(0,   `rgba(180,80,255,${(0.15 + pulse * 0.10).toFixed(2)})`);
+    glow.addColorStop(1,   'rgba(100,0,180,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(px, py, pr * 2, 0, Math.PI * 2); ctx.fill();
+
+    // Circle outline
+    ctx.strokeStyle = s.stroke;
+    ctx.shadowColor = s.shadow;
+    ctx.shadowBlur  = 10;
+    ctx.lineWidth   = charge > 0 ? 2.5 : 1.5;
+    ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.stroke();
+    ctx.shadowBlur  = 0;
+
+    // Icon label
+    ctx.fillStyle    = s.stroke;
+    ctx.font         = `bold ${Math.floor(pr * 1.05)}px Arial`;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(s.label, px, py);
+
+    // Charge arc (yellow ring that fills clockwise)
+    if (charge > 0) {
+      ctx.strokeStyle = charge >= 0.95 ? '#ffffff' : '#ffdd00';
+      ctx.lineWidth   = 3;
+      ctx.shadowColor = '#ffff00';
+      ctx.shadowBlur  = 12;
+      ctx.lineCap     = 'round';
+      ctx.beginPath();
+      ctx.arc(px, py, pr + 4, -Math.PI / 2, -Math.PI / 2 + charge * Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.lineCap    = 'butt';
+    }
+
+    ctx.restore();
+  }
 }
 
 function _rrPath(x, y, w, h, r) {
