@@ -284,11 +284,11 @@ function _drawPortals(portals, S) {
   ctx.setLineDash([]);
   ctx.restore();
 
-  _drawSinglePortal(x0, y0, PORTAL_RADIUS * S, t);
-  _drawSinglePortal(x1, y1, PORTAL_RADIUS * S, t);
+  _drawSinglePortal(x0, y0, PORTAL_RADIUS * S, t, portals[0].rotation ?? 0);
+  _drawSinglePortal(x1, y1, PORTAL_RADIUS * S, t, portals[1].rotation ?? 0);
 }
 
-function _drawSinglePortal(x, y, r, t) {
+function _drawSinglePortal(x, y, r, t, rotation) {
   const spin  = (t / 900) % (Math.PI * 2);
   const pulse = Math.sin(t / 450) * 0.5 + 0.5;
   const pr    = r * (1 + 0.08 * Math.sin(t / 650));
@@ -325,6 +325,30 @@ function _drawSinglePortal(x, y, r, t) {
   ctx.shadowColor = '#9030ff';
   ctx.shadowBlur  = 14;
   ctx.beginPath(); ctx.arc(0, 0, pr, 0, Math.PI * 2); ctx.stroke();
+
+  // Exit-direction arrow (yellow, points where the ball will go)
+  const arrowAlpha = (0.80 + pulse * 0.20).toFixed(2);
+  const shaft      = pr * 0.80;
+  const head       = pr * 0.30;
+  ctx.save();
+  ctx.rotate(rotation);
+  ctx.shadowColor  = '#ffff40';
+  ctx.shadowBlur   = 12;
+  ctx.strokeStyle  = `rgba(255,255,80,${arrowAlpha})`;
+  ctx.fillStyle    = `rgba(255,255,80,${arrowAlpha})`;
+  ctx.lineWidth    = 2.5;
+  ctx.lineCap      = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-shaft * 0.1, 0);
+  ctx.lineTo(shaft, 0);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(shaft, 0);
+  ctx.lineTo(shaft - head, -head * 0.45);
+  ctx.lineTo(shaft - head, head * 0.45);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 
   ctx.restore();
 }

@@ -64,10 +64,12 @@ class PowerUp:
 
 @dataclass
 class Portal:
-    id:      int
-    x:       float
-    y:       float
-    pair_id: int   # id of the linked partner portal
+    id:       int
+    x:        float
+    y:        float
+    pair_id:  int    # id of the linked partner portal
+    rotation: float = 0.0  # exit-direction angle in radians (rotates each tick)
 
     def to_dict(self) -> dict:
-        return {"id": self.id, "x": self.x, "y": self.y, "pair_id": self.pair_id}
+        return {"id": self.id, "x": self.x, "y": self.y, "pair_id": self.pair_id,
+                "rotation": self.rotation}

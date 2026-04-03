@@ -50,10 +50,12 @@ MOVING_GOAL_DURATION: float = float(os.getenv("MOVING_GOAL_DURATION", 9.0))
 SNITCH_DURATION:    float = float(os.getenv("SNITCH_DURATION",    8.0))
 SNITCH_TURN_CHANCE: float = float(os.getenv("SNITCH_TURN_CHANCE", 0.025))  # sharp-turn probability per tick
 
-PORTAL_DURATION:  float = float(os.getenv("PORTAL_DURATION",  10.0))
-PORTAL_RADIUS:    float = float(os.getenv("PORTAL_RADIUS",    0.045))
-PORTAL_MIN_DIST:  float = float(os.getenv("PORTAL_MIN_DIST",  0.35))
-PORTAL_COOLDOWN:  float = float(os.getenv("PORTAL_COOLDOWN",  0.4))
+PORTAL_DURATION:    float = float(os.getenv("PORTAL_DURATION",    10.0))
+PORTAL_RADIUS:      float = float(os.getenv("PORTAL_RADIUS",      0.045))
+PORTAL_MIN_DIST:    float = float(os.getenv("PORTAL_MIN_DIST",    0.35))
+PORTAL_COOLDOWN:    float = float(os.getenv("PORTAL_COOLDOWN",    0.4))
+PORTAL_ROT_SPEED:   float = float(os.getenv("PORTAL_ROT_SPEED",   1.5))   # rad/s (~4s per full spin)
+PORTAL_ENTRY_DELAY: float = float(os.getenv("PORTAL_ENTRY_DELAY", 0.25))  # seconds before teleport fires
 
 HURRICANE_DURATION: float = float(os.getenv("HURRICANE_DURATION", 10.0))
 HURRICANE_RADIUS:   float = float(os.getenv("HURRICANE_RADIUS",   0.30))

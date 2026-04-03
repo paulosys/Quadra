@@ -19,7 +19,8 @@ from websockets.server import WebSocketServerProtocol
 from config import (
     BALL_R, BALL_SPEED_INIT, BALL_SPEED_MAX, FIELD_MARGIN, LIVES_START,
     MOVING_GOAL_AMP, MOVING_GOAL_DURATION, MOVING_GOAL_SPEED,
-    PORTAL_COOLDOWN, PORTAL_DURATION, PORTAL_MIN_DIST, PORTAL_RADIUS,
+    PORTAL_COOLDOWN, PORTAL_DURATION, PORTAL_ENTRY_DELAY, PORTAL_MIN_DIST,
+    PORTAL_RADIUS, PORTAL_ROT_SPEED,
     SNITCH_TURN_CHANCE,
     SPEED_BOOST_FACTOR, TICK_DT,
     HURRICANE_DURATION, HURRICANE_RADIUS, HURRICANE_STRENGTH,
@@ -54,8 +55,9 @@ class Room:
         self._goal_move_time:    float       = 0.0
 
         # Portal effect (room-level)
-        self.portals:       List[Portal] = []
-        self._portal_timer: float        = 0.0
+        self.portals:            List[Portal] = []
+        self._portal_timer:      float        = 0.0
+        self._pending_teleports: dict         = {}  # ball_id → entry info
 
         # Hurricane effect (room-level)
         self._hurricane_timer: float = 0.0
@@ -94,8 +96,9 @@ class Room:
         self.goal_offsets       = [0.0, 0.0, 0.0, 0.0]
         self._goal_moving_timer = 0.0
         self._goal_move_time    = 0.0
-        self.portals      = []
-        self._portal_timer = 0.0
+        self.portals             = []
+        self._portal_timer       = 0.0
+        self._pending_teleports  = {}
         self._hurricane_timer = 0.0
 
     def reset_for_new_game(self) -> None:
@@ -129,6 +132,8 @@ class Room:
         scored: Optional[Side] = None
         scorer: Optional[int]  = None
         for ball in self.balls:
+            if ball.id in self._pending_teleports:
+                continue  # frozen inside portal — skip physics
             result = self._physics.tick_ball(
                 ball, self.paddles, self.eliminated, players_set, self.goal_offsets
             )
@@ -207,8 +212,10 @@ class Room:
                 id1 = self._next_id()
                 id2 = self._next_id()
                 self.portals      = [
-                    Portal(id=id1, x=x1, y=y1, pair_id=id2),
-                    Portal(id=id2, x=x2, y=y2, pair_id=id1),
+                    Portal(id=id1, x=x1, y=y1, pair_id=id2,
+                           rotation=random.uniform(0, math.pi * 2)),
+                    Portal(id=id2, x=x2, y=y2, pair_id=id1,
+                           rotation=random.uniform(0, math.pi * 2)),
                 ]
                 self._portal_timer = PORTAL_DURATION
                 return
@@ -234,33 +241,79 @@ class Room:
                 )
 
     def _tick_portals(self) -> None:
-        """Tick down portal timer and teleport balls that enter a portal."""
+        """Advance portal rotation, handle entry delay, and teleport balls."""
+        # 1. Advance rotation on active portals
+        for portal in self.portals:
+            portal.rotation = (portal.rotation + PORTAL_ROT_SPEED * TICK_DT) % (math.pi * 2)
+
+        # 2. Tick portal cooldowns
         for ball in self.balls:
             if ball.portal_cooldown > 0:
                 ball.portal_cooldown = max(0.0, ball.portal_cooldown - TICK_DT)
 
+        # 3. Process pending teleports: lock position, fire when timer expires
+        portal_map = {p.id: p for p in self.portals}
+        done: list = []
+        for ball_id, pt in self._pending_teleports.items():
+            ball = next((b for b in self.balls if b.id == ball_id), None)
+            if ball is None:
+                done.append(ball_id)
+                continue
+            # Keep ball frozen at portal entry point
+            ball.x = pt['entry_x']
+            ball.y = pt['entry_y']
+            pt['timer'] -= TICK_DT
+            if pt['timer'] <= 0:
+                partner = portal_map.get(pt['partner_id'])
+                if partner:
+                    ball.x  = partner.x
+                    ball.y  = partner.y
+                    ball.vx = math.cos(partner.rotation) * pt['speed']
+                    ball.vy = math.sin(partner.rotation) * pt['speed']
+                    ball.portal_cooldown = PORTAL_COOLDOWN
+                else:
+                    # Portals expired mid-transit — restore original velocity
+                    ball.vx = pt['orig_vx']
+                    ball.vy = pt['orig_vy']
+                done.append(ball_id)
+        for ball_id in done:
+            del self._pending_teleports[ball_id]
+
+        # 4. Tick portal lifetime
         if not self.portals:
             return
-
         self._portal_timer -= TICK_DT
         if self._portal_timer <= 0:
             self.portals = []
+            # Release any balls still in transit
+            for ball_id, pt in list(self._pending_teleports.items()):
+                ball = next((b for b in self.balls if b.id == ball_id), None)
+                if ball:
+                    ball.vx = pt['orig_vx']
+                    ball.vy = pt['orig_vy']
+            self._pending_teleports.clear()
             return
 
-        portal_map = {p.id: p for p in self.portals}
+        # 5. Detect new entries
         for ball in self.balls:
-            if ball.portal_cooldown > 0:
+            if ball.portal_cooldown > 0 or ball.id in self._pending_teleports:
                 continue
             for portal in self.portals:
                 dx = ball.x - portal.x
                 dy = ball.y - portal.y
                 if math.sqrt(dx * dx + dy * dy) < BALL_R + PORTAL_RADIUS:
-                    partner = portal_map.get(portal.pair_id)
-                    if partner:
-                        ball.x = partner.x
-                        ball.y = partner.y
-                        ball.portal_cooldown = PORTAL_COOLDOWN
-                    break  # one teleport per ball per tick
+                    self._pending_teleports[ball.id] = {
+                        'timer':      PORTAL_ENTRY_DELAY,
+                        'entry_x':    portal.x,
+                        'entry_y':    portal.y,
+                        'partner_id': portal.pair_id,
+                        'speed':      ball.speed,
+                        'orig_vx':    ball.vx,
+                        'orig_vy':    ball.vy,
+                    }
+                    ball.vx = 0.0
+                    ball.vy = 0.0
+                    break  # one entry per ball per tick
 
     # ── Networking ────────────────────────────────────────────────────────────
 
