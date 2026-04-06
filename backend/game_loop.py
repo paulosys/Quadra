@@ -71,8 +71,9 @@ async def _handle_goal(room: Room, scored: int, scorer: int | None) -> bool:
         room.eliminated[scored] = True
 
     # Award goal to scorer and check for life bonus (every 3 goals, max LIVES_START)
+    # Do not award own goals (scorer == scored)
     life_gained = False
-    if scorer is not None and scorer in room.players:
+    if scorer is not None and scorer != scored and scorer in room.players:
         room.goals_scored[scorer] += 1
         if room.goals_scored[scorer] % 3 == 0 and room.lives[scorer] < LIVES_START:
             room.lives[scorer] += 1
