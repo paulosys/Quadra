@@ -14,6 +14,10 @@ export const PORTAL_RADIUS   = 0.045;
 export const HURRICANE_RADIUS = 0.30;
 export const PADDLE_SPEED    = 0.012;
 
+export const PULSE_RADIUS_NORMAL  = 0.18;
+export const PULSE_RADIUS_PERFECT = 0.055;
+export const PULSE_COOLDOWN_SECS  = 0.5;
+
 export const SIDE_LABELS = ['Topo', 'Baixo', 'Esquerda', 'Direita'];
 
 export const SIDE_KEYS = [

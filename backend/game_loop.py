@@ -24,7 +24,7 @@ _UPGRADE_CARDS = [
 ]
 _UPGRADE_TIMEOUT  = 10.0  # seconds each player has to pick
 _GOAL_FLASH_PAUSE = 1.5   # brief pause for the goal flash before upgrade screen
-_KICKOFF_TIMEOUT  = 5.0   # seconds scorer has to aim and kick
+_KICKOFF_TIMEOUT  = 1.0   # seconds scorer has to aim and kick
 
 
 async def game_loop(room: Room) -> None:

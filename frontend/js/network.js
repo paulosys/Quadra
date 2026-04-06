@@ -4,7 +4,7 @@
  */
 import { WS_URL } from './config.js';
 import { state } from './state.js';
-import { playBounce, playGoal, playPowerupCollect, playEliminated } from './audio.js';
+import { playBounce, playGoal, playPowerupCollect, playEliminated, playPulse } from './audio.js';
 import {
   showOverlay, hideAllOverlays,
   showWaiting, updateScoreUI, updatePowerupQueue, updateSpawnTimer,
@@ -170,6 +170,16 @@ function _handleMessage(msg) {
       updateScoreUI();
       break;
     }
+
+    case 'pulse':
+      state.pulseEffects.push({
+        slot:      msg.slot,
+        hit:       msg.hit,
+        perfect:   msg.perfect,
+        startTime: Date.now(),
+      });
+      playPulse(msg.perfect, msg.hit);
+      break;
 
     case 'error':
       alert('Erro: ' + msg.msg);

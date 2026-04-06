@@ -94,6 +94,23 @@ export function tickHurricaneAmbient(active) {
   src.start(); src.stop(ctx.currentTime + dur);
 }
 
+export function playPulse(perfect, hit) {
+  if (perfect) {
+    // Bright rising "power" chord
+    _tone(440, 0.06, 'sine',   0.20);
+    setTimeout(() => _tone(660,  0.08, 'sine', 0.22), 50);
+    setTimeout(() => _tone(880,  0.14, 'sine', 0.25), 100);
+    setTimeout(() => _tone(1320, 0.18, 'sine', 0.20, 660), 160);
+  } else if (hit) {
+    // Clean short impact
+    _tone(300, 0.06, 'square', 0.14);
+    setTimeout(() => _tone(480, 0.10, 'sine', 0.16, 240), 55);
+  } else {
+    // Dry miss thud
+    _tone(140, 0.10, 'triangle', 0.12, 80);
+  }
+}
+
 export function playEliminated() {
   _tone(250, 0.15, 'sawtooth', 0.3);
   setTimeout(() => _tone(180, 0.4, 'sawtooth', 0.25), 150);

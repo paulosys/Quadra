@@ -69,6 +69,13 @@ CORNER_CHARGE_TIME:       float = float(os.getenv("CORNER_CHARGE_TIME",       1.
 CORNER_PROXIMITY:         float = float(os.getenv("CORNER_PROXIMITY",         0.10))
 CORNER_GOAL_DURATION:     float = float(os.getenv("CORNER_GOAL_DURATION",     9.0))
 
+# ── Pulse ──────────────────────────────────────────────────────────────────────
+PULSE_FORCE_NORMAL:  float = float(os.getenv("PULSE_FORCE_NORMAL",  0.010))
+PULSE_FORCE_PERFECT: float = float(os.getenv("PULSE_FORCE_PERFECT", 0.020))
+PULSE_RADIUS_NORMAL: float = float(os.getenv("PULSE_RADIUS_NORMAL", 0.18))
+PULSE_RADIUS_PERFECT: float = float(os.getenv("PULSE_RADIUS_PERFECT", 0.055))
+PULSE_COOLDOWN:      float = float(os.getenv("PULSE_COOLDOWN",      0.5))
+
 # ── Network ────────────────────────────────────────────────────────────────────
 WS_HOST:          str   = os.getenv("WS_HOST",          "0.0.0.0")
 WS_PORT:          int   = int(os.getenv("WS_PORT",       8765))

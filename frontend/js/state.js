@@ -31,6 +31,10 @@ export const state = {
     powerup_spawn_timer: 0,
   },
 
+  /** Pulse mechanic */
+  pulseLastFired: 0,    // timestamp (ms) of last pulse sent by local player
+  pulseEffects:   [],   // [{slot, hit, perfect, startTime}] — visual effects
+
   /** Interpolated display positions (updated each frame in renderer) */
   displayBallMap: new Map(),   // id → { x, y }
   displayPads:    [0.5, 0.5, 0.5, 0.5],

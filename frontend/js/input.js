@@ -2,7 +2,7 @@
  * Input — keyboard and mobile touch → paddle position → server.
  * Receives `send` as an injected dependency to avoid circular imports.
  */
-import { SIDE_KEYS, PADDLE_LEN_H, PADDLE_LEN_V, PADDLE_SPEED } from './config.js';
+import { SIDE_KEYS, PADDLE_LEN_H, PADDLE_LEN_V, PADDLE_SPEED, PULSE_COOLDOWN_SECS } from './config.js';
 import { state } from './state.js';
 import { unlockAudio } from './audio.js';
 
@@ -25,7 +25,10 @@ export function setupInputListeners(send) {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code))
       e.preventDefault();
     unlockAudio();
-    if (e.code === 'Space') _tryKick(send);
+    if (e.code === 'Space') {
+      _tryKick(send);
+      _tryPulse(send);
+    }
   });
   window.addEventListener('keyup', e => { _keys[e.code] = false; });
 
@@ -60,6 +63,15 @@ export function inputTick(send) {
     moved = true;
   }
   if (moved) send({ type: 'move', pos: state.localPadPos });
+}
+
+function _tryPulse(send) {
+  if (state.gameState !== 'playing') return;
+  if (state.mySlot < 0) return;
+  const elapsed = (Date.now() - state.pulseLastFired) / 1000;
+  if (elapsed < PULSE_COOLDOWN_SECS) return;
+  state.pulseLastFired = Date.now();
+  send({ type: 'pulse' });
 }
 
 function _bindMobileButton(el, onDown, onRelease) {
