@@ -58,6 +58,14 @@ class Room:
         self.eliminated:   list[bool] = [False] * 4
         self.goals_scored: list[int]  = [0] * 4
         self.paddles:   list[float] = [0.5, 0.5, 0.5, 0.5]
+
+        # Per-player upgrade multipliers (persist across rounds, reset on new game)
+        self.paddle_len_mult: list[float] = [1.0, 1.0, 1.0, 1.0]
+        self.speed_mult:      list[float] = [1.0, 1.0, 1.0, 1.0]
+
+        # Upgrade phase state
+        self.upgrade_picks:    dict                          = {}
+        self.upgrade_all_done: Optional[asyncio.Event]       = None
         self.balls:     List[Ball]    = []
         self.powerups:  List[PowerUp] = []
 
@@ -133,7 +141,11 @@ class Room:
         self.lives        = [LIVES_START] * 4
         self.eliminated   = [False] * 4
         self.goals_scored = [0] * 4
-        self.paddles    = [0.5, 0.5, 0.5, 0.5]
+        self.paddles      = [0.5, 0.5, 0.5, 0.5]
+        self.paddle_len_mult = [1.0, 1.0, 1.0, 1.0]
+        self.speed_mult      = [1.0, 1.0, 1.0, 1.0]
+        self.upgrade_picks   = {}
+        self.upgrade_all_done = None
         self.state      = "waiting"
         self.players    = {}
         self.names      = {}
@@ -169,7 +181,8 @@ class Room:
             if ball.id in self._pending_teleports:
                 continue  # frozen inside portal — skip physics
             result = self._physics.tick_ball(
-                ball, self.paddles, self.eliminated, players_set, self.goal_offsets
+                ball, self.paddles, self.eliminated, players_set, self.goal_offsets,
+                self.paddle_len_mult
             )
             if result is not None and scored is None and not self.debug_freeze_goals:
                 scored = result
@@ -429,6 +442,35 @@ class Room:
                     ball.vy = 0.0
                     break  # one entry per ball per tick
 
+    # ── Upgrades ─────────────────────────────────────────────────────────────
+
+    def handle_upgrade_pick(self, slot: int, card: Optional[str]) -> None:
+        """Process a player's upgrade card selection. Must be called while holding room.lock."""
+        if slot not in self.players or self.eliminated[slot]:
+            return
+        if slot in self.upgrade_picks:
+            return  # already picked
+
+        self.upgrade_picks[slot] = card
+
+        if card == "life":
+            if self.goals_scored[slot] >= 3:
+                self.goals_scored[slot] -= 3
+                self.lives[slot] += 1
+        elif card == "paddle":
+            if self.goals_scored[slot] >= 2:
+                self.goals_scored[slot] -= 2
+                self.paddle_len_mult[slot] = round(self.paddle_len_mult[slot] + 0.05, 4)
+        elif card == "speed":
+            if self.goals_scored[slot] >= 2:
+                self.goals_scored[slot] -= 2
+                self.speed_mult[slot] = round(self.speed_mult[slot] + 0.10, 4)
+
+        # Fire event when all alive players have picked
+        alive = self.alive_slots()
+        if self.upgrade_all_done and all(s in self.upgrade_picks for s in alive):
+            self.upgrade_all_done.set()
+
     # ── Networking ────────────────────────────────────────────────────────────
 
     async def broadcast(self, msg: dict) -> None:
@@ -466,6 +508,8 @@ class Room:
             ],
             "corner_goals_active": [t > 0 for t in self._corner_goal_timers],
             "debug_freeze_goals":  self.debug_freeze_goals,
+            "paddle_len_mult": self.paddle_len_mult[:],
+            "speed_mult":      self.speed_mult[:],
         }
 
     # ── Internals ─────────────────────────────────────────────────────────────

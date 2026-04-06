@@ -161,10 +161,11 @@ function _eraseGoalBorders(st, S, fT, fB, fL, fR, gwH, gwV, go) {
 
 function _drawPaddles(st, pt, fT, fB, fL, fR, S) {
   const dp = state.displayPads;
-  if (st.names[0]) _drawPadH(dp[0]*S, fT+pt*0.5, PADDLE_LEN_H*S, pt, st.eliminated[0], state.mySlot === 0);
-  if (st.names[1]) _drawPadH(dp[1]*S, fB-pt*0.5, PADDLE_LEN_H*S, pt, st.eliminated[1], state.mySlot === 1);
-  if (st.names[2]) _drawPadV(fL+pt*0.5, dp[2]*S, pt, PADDLE_LEN_V*S, st.eliminated[2], state.mySlot === 2);
-  if (st.names[3]) _drawPadV(fR-pt*0.5, dp[3]*S, pt, PADDLE_LEN_V*S, st.eliminated[3], state.mySlot === 3);
+  const lm = st.paddle_len_mult || [1, 1, 1, 1];
+  if (st.names[0]) _drawPadH(dp[0]*S, fT+pt*0.5, PADDLE_LEN_H*lm[0]*S, pt, st.eliminated[0], state.mySlot === 0);
+  if (st.names[1]) _drawPadH(dp[1]*S, fB-pt*0.5, PADDLE_LEN_H*lm[1]*S, pt, st.eliminated[1], state.mySlot === 1);
+  if (st.names[2]) _drawPadV(fL+pt*0.5, dp[2]*S, pt, PADDLE_LEN_V*lm[2]*S, st.eliminated[2], state.mySlot === 2);
+  if (st.names[3]) _drawPadV(fR-pt*0.5, dp[3]*S, pt, PADDLE_LEN_V*lm[3]*S, st.eliminated[3], state.mySlot === 3);
 }
 
 function _drawBalls(st, S) {

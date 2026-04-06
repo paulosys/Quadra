@@ -111,6 +111,11 @@ async def _message_loop(ws: WebSocketServerProtocol, room: Room, slot: int) -> N
                     if not (room.task and not room.task.done()):
                         room.task = asyncio.create_task(game_loop(room))
 
+        elif t == "pick_upgrade":
+            async with room.lock:
+                if room.state == "upgrade":
+                    room.handle_upgrade_pick(slot, msg.get("card"))
+
         elif t == "debug_toggle_freeze":
             async with room.lock:
                 room.debug_freeze_goals = not room.debug_freeze_goals

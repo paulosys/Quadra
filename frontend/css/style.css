@@ -239,6 +239,60 @@ canvas {
 }
 #room-code:hover { background:#181800; }
 
+/* ── Upgrade cards ── */
+#upgradeCards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 4px;
+}
+.upgrade-card {
+  background: #111;
+  border: 2px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 18px 14px;
+  min-width: 120px;
+  max-width: 160px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .18s, transform .15s, opacity .2s;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.upgrade-card:hover:not(.locked) {
+  border-color: var(--accent);
+  transform: scale(1.05);
+  box-shadow: 0 0 16px rgba(245,200,66,.25);
+}
+.upgrade-card:active:not(.locked) { transform: scale(.97); }
+.upgrade-card.locked {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+.upgrade-card.chosen {
+  border-color: #3a8c5c;
+  background: #0a1f12;
+}
+.upgrade-card.unchosen { opacity: 0.35; }
+.upgrade-cost {
+  font-size: .55rem;
+  color: #777;
+  letter-spacing: .1em;
+}
+.upgrade-label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.35rem;
+  color: var(--accent);
+  letter-spacing: .1em;
+}
+.upgrade-desc {
+  font-size: .48rem;
+  color: #555;
+  line-height: 1.6;
+}
+
 /* mobile paddle buttons */
 #mobile-ctrl {
   display:none;

@@ -1,6 +1,6 @@
 """
 game_loop — async coroutine that drives one Room through its full lifecycle:
-  countdown → playing → goal pause → countdown → … → gameover
+  countdown → playing → goal pause → upgrade pick → countdown → … → gameover
 """
 from __future__ import annotations
 
@@ -9,12 +9,21 @@ import logging
 import time
 from typing import TYPE_CHECKING
 
-from config import COUNTDOWN_SECS, GOAL_PAUSE, LIVES_START, TICK_DT
+from config import COUNTDOWN_SECS, TICK_DT
 
 if TYPE_CHECKING:
     from room import Room
 
 log = logging.getLogger("quadra")
+
+# Upgrade cards available after each goal
+_UPGRADE_CARDS = [
+    {"id": "life",   "cost_goals": 3, "label": "+1 Vida",    "desc": "Troca 3 gols por 1 vida extra"},
+    {"id": "paddle", "cost_goals": 2, "label": "+5% Barra",  "desc": "Aumenta 5% a barra do goleiro"},
+    {"id": "speed",  "cost_goals": 2, "label": "+10% Veloc.", "desc": "Aumenta 10% a velocidade"},
+]
+_UPGRADE_TIMEOUT = 10.0  # seconds each player has to pick
+_GOAL_FLASH_PAUSE = 1.5  # brief pause for the goal flash before upgrade screen
 
 
 async def game_loop(room: Room) -> None:
@@ -70,14 +79,9 @@ async def _handle_goal(room: Room, scored: int, scorer: int | None) -> bool:
     if eliminated_now:
         room.eliminated[scored] = True
 
-    # Award goal to scorer and check for life bonus (every 3 goals, max LIVES_START)
-    # Do not award own goals (scorer == scored)
-    life_gained = False
+    # Award goal to scorer — no own goals
     if scorer is not None and scorer != scored and scorer in room.players:
         room.goals_scored[scorer] += 1
-        if room.goals_scored[scorer] % 3 == 0 and room.lives[scorer] < LIVES_START:
-            room.lives[scorer] += 1
-            life_gained = True
 
     alive     = room.alive_slots()
     game_over = len(alive) <= 1
@@ -94,19 +98,56 @@ async def _handle_goal(room: Room, scored: int, scorer: int | None) -> bool:
         "winner":         alive[0] if game_over and alive else -1,
         "names":          [room.names.get(i, "") for i in range(4)],
         "goals_scored":   room.goals_scored[:],
-        "life_gained":    life_gained,
+        "life_gained":    False,
     })
 
     if game_over:
         room.state = "gameover"
         return True
 
-    await asyncio.sleep(GOAL_PAUSE)
-    if room.num_players == 0:
-        return True
+    # Release lock so ws_handler can receive pick_upgrade messages during the pause
+    room.lock.release()
+    try:
+        await asyncio.sleep(_GOAL_FLASH_PAUSE)
+        if room.num_players == 0:
+            return True
 
-    await _run_countdown(room)
-    room.launch_ball()
-    room.state = "playing"
-    await room.broadcast({"type": "start"})
-    return False
+        await _run_upgrade_phase(room)
+        if room.num_players == 0:
+            return True
+
+        await _run_countdown(room)
+        room.launch_ball()
+        room.state = "playing"
+        await room.broadcast({"type": "start"})
+        return False
+    finally:
+        await room.lock.acquire()
+
+
+async def _run_upgrade_phase(room: Room) -> None:
+    """Show upgrade cards to all players and wait for picks (or timeout)."""
+    room.upgrade_picks = {}
+    room.upgrade_all_done = asyncio.Event()
+    room.state = "upgrade"
+
+    await room.broadcast({
+        "type":         "upgrade_pick",
+        "cards":        _UPGRADE_CARDS,
+        "goals_scored": room.goals_scored[:],
+        "timeout":      int(_UPGRADE_TIMEOUT),
+    })
+
+    try:
+        await asyncio.wait_for(room.upgrade_all_done.wait(), timeout=_UPGRADE_TIMEOUT)
+    except asyncio.TimeoutError:
+        pass
+
+    # Notify clients of applied upgrades so they can update display
+    await room.broadcast({
+        "type":            "upgrade_result",
+        "goals_scored":    room.goals_scored[:],
+        "lives":           room.lives[:],
+        "paddle_len_mult": room.paddle_len_mult[:],
+        "speed_mult":      room.speed_mult[:],
+    })

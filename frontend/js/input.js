@@ -34,17 +34,20 @@ export function setupInputListeners(send) {
 export function inputTick(send) {
   if (state.mySlot < 0 || state.gameState !== 'playing') return;
 
-  const isH = state.mySlot === 0 || state.mySlot === 1;
-  const k    = SIDE_KEYS[state.mySlot];
-  const half = isH ? PADDLE_LEN_H / 2 : PADDLE_LEN_V / 2;
-  let moved  = false;
+  const isH      = state.mySlot === 0 || state.mySlot === 1;
+  const k        = SIDE_KEYS[state.mySlot];
+  const lenMult  = state.server.paddle_len_mult?.[state.mySlot] ?? 1.0;
+  const spdMult  = state.server.speed_mult?.[state.mySlot] ?? 1.0;
+  const half     = isH ? (PADDLE_LEN_H * lenMult) / 2 : (PADDLE_LEN_V * lenMult) / 2;
+  const speed    = PADDLE_SPEED * spdMult;
+  let moved      = false;
 
   if (_keys[k.neg] || _mLeftHeld) {
-    state.localPadPos = Math.max(half, state.localPadPos - PADDLE_SPEED);
+    state.localPadPos = Math.max(half, state.localPadPos - speed);
     moved = true;
   }
   if (_keys[k.pos] || _mRightHeld) {
-    state.localPadPos = Math.min(1 - half, state.localPadPos + PADDLE_SPEED);
+    state.localPadPos = Math.min(1 - half, state.localPadPos + speed);
     moved = true;
   }
   if (moved) send({ type: 'move', pos: state.localPadPos });

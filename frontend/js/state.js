@@ -6,7 +6,7 @@
 export const state = {
   mySlot:      -1,
   myRoom:      '',
-  gameState:   'connect',   // connect | waiting | countdown | playing | goal | gameover
+  gameState:   'connect',   // connect | waiting | countdown | playing | goal | upgrade | gameover
   localPadPos: 0.5,
 
   /** Last authoritative snapshot received from server */
@@ -25,6 +25,8 @@ export const state = {
     hurricane_active:    false,
     corner_powerups:     [null, null, null, null],
     corner_goals_active: [false, false, false, false],
+    paddle_len_mult:     [1, 1, 1, 1],
+    speed_mult:          [1, 1, 1, 1],
   },
 
   /** Interpolated display positions (updated each frame in renderer) */

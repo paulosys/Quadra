@@ -5,7 +5,7 @@
 import { SIDE_LABELS } from './config.js';
 import { state } from './state.js';
 
-const OVERLAYS = ['ovConnect', 'ovWaiting', 'ovCountdown', 'ovGoal', 'ovEnd'];
+const OVERLAYS = ['ovConnect', 'ovWaiting', 'ovCountdown', 'ovGoal', 'ovEnd', 'ovUpgrade'];
 
 export function showOverlay(id) {
   OVERLAYS.forEach(x => {
@@ -51,6 +51,72 @@ export function updateScoreUI() {
     document.getElementById('sc' + i).classList.toggle('elim', state.server.eliminated[i]);
     document.getElementById('h'  + i).classList.toggle('me',   i === state.mySlot);
   }
+}
+
+// ── Upgrade cards ──────────────────────────────────────────────────────────
+
+let _upgradeTimerInterval = null;
+
+export function showUpgradeCards(cards, goalsScored, mySlot, timeout, send) {
+  OVERLAYS.forEach(x => {
+    document.getElementById(x).style.display = 'none';
+  });
+  const overlay = document.getElementById('ovUpgrade');
+  overlay.style.display = 'flex';
+
+  const timerEl = document.getElementById('upgradeTimer');
+  const cardsEl = document.getElementById('upgradeCards');
+  cardsEl.innerHTML = '';
+
+  let picked   = false;
+  let timeLeft = timeout;
+
+  timerEl.textContent = `${timeLeft}s`;
+  if (_upgradeTimerInterval) clearInterval(_upgradeTimerInterval);
+  _upgradeTimerInterval = setInterval(() => {
+    timeLeft--;
+    if (timeLeft <= 0) {
+      clearInterval(_upgradeTimerInterval);
+      _upgradeTimerInterval = null;
+      timerEl.textContent = '0s';
+    } else {
+      timerEl.textContent = `${timeLeft}s`;
+    }
+  }, 1000);
+
+  const myGoals = goalsScored[mySlot] ?? 0;
+
+  for (const card of cards) {
+    const canAfford = myGoals >= card.cost_goals;
+    const div = document.createElement('div');
+    div.className = 'upgrade-card' + (canAfford ? '' : ' locked');
+
+    div.innerHTML = `
+      <div class="upgrade-cost">${card.cost_goals > 0 ? `⚽ ${card.cost_goals} gols` : 'Grátis'}</div>
+      <div class="upgrade-label">${card.label}</div>
+      <div class="upgrade-desc">${card.desc}</div>
+    `;
+
+    if (canAfford) {
+      div.addEventListener('click', () => {
+        if (picked) return;
+        picked = true;
+        send({ type: 'pick_upgrade', card: card.id });
+        cardsEl.querySelectorAll('.upgrade-card').forEach(c => c.classList.add('unchosen'));
+        div.classList.remove('unchosen');
+        div.classList.add('chosen');
+        if (_upgradeTimerInterval) { clearInterval(_upgradeTimerInterval); _upgradeTimerInterval = null; }
+        timerEl.textContent = 'Aguardando...';
+      });
+    }
+
+    cardsEl.appendChild(div);
+  }
+}
+
+export function hideUpgradeCards() {
+  if (_upgradeTimerInterval) { clearInterval(_upgradeTimerInterval); _upgradeTimerInterval = null; }
+  document.getElementById('ovUpgrade').style.display = 'none';
 }
 
 export function updatePowerupQueue(queue) {

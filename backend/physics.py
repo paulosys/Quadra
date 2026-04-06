@@ -40,11 +40,12 @@ class PhysicsEngine:
 
     def tick_ball(
         self,
-        ball:         Ball,
-        paddles:      list[float],
-        eliminated:   list[bool],
-        players:      set[int],
-        goal_offsets: list[float],
+        ball:             Ball,
+        paddles:          list[float],
+        eliminated:       list[bool],
+        players:          set[int],
+        goal_offsets:     list[float],
+        paddle_len_mults: list[float],
     ) -> Optional[Side]:
         ball.bounce = False
         ball.x += ball.vx
@@ -59,7 +60,7 @@ class PhysicsEngine:
 
         scored: Optional[Side] = None
         for _side in (Side.TOP, Side.BOTTOM, Side.LEFT, Side.RIGHT):
-            result = self._check_side(ball, _side, paddles, eliminated, players, goal_offsets)
+            result = self._check_side(ball, _side, paddles, eliminated, players, goal_offsets, paddle_len_mults)
             if result is not None:
                 scored = result
                 break
@@ -81,15 +82,17 @@ class PhysicsEngine:
 
     def _check_side(
         self,
-        b:            Ball,
-        side:         Side,
-        paddles:      list[float],
-        eliminated:   list[bool],
-        players:      set[int],
-        goal_offsets: list[float],
+        b:                Ball,
+        side:             Side,
+        paddles:          list[float],
+        eliminated:       list[bool],
+        players:          set[int],
+        goal_offsets:     list[float],
+        paddle_len_mults: list[float],
     ) -> Optional[Side]:
         attr, vattr, perp_attr, vperp_attr, wall, inward, paddle_half, goal_half = \
             self._SIDE_PARAMS[side]
+        paddle_half = paddle_half * paddle_len_mults[side]
 
         r          = BALL_R
         pos        = getattr(b, attr)

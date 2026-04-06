@@ -8,6 +8,7 @@ import { playBounce, playGoal, playPowerupCollect, playEliminated } from './audi
 import {
   showOverlay, hideAllOverlays,
   showWaiting, updateScoreUI, updatePowerupQueue,
+  showUpgradeCards, hideUpgradeCards,
 } from './ui.js';
 
 let _ws = null;
@@ -69,6 +70,7 @@ function _handleMessage(msg) {
       break;
 
     case 'countdown':
+      hideUpgradeCards();
       showOverlay('ovCountdown');
       document.getElementById('cdText').textContent = msg.value;
       state.gameState = 'countdown';
@@ -99,6 +101,8 @@ function _handleMessage(msg) {
       s.corner_powerups     = msg.corner_powerups       || [null, null, null, null];
       s.corner_goals_active = msg.corner_goals_active   || [false, false, false, false];
       s.debug_freeze_goals  = msg.debug_freeze_goals    || false;
+      s.paddle_len_mult     = msg.paddle_len_mult        || [1, 1, 1, 1];
+      s.speed_mult          = msg.speed_mult             || [1, 1, 1, 1];
       updateScoreUI();
       updatePowerupQueue(s.powerup_queue);
       break;
@@ -121,8 +125,7 @@ function _handleMessage(msg) {
         ? (msg.names[msg.scorer] || `Jogador ${msg.scorer + 1}`)
         : null;
       document.getElementById('goalTitle').textContent = 'GOL!';
-      let sub = scorerName ? `${scorerName} marcou!` : '';
-      if (msg.life_gained && scorerName) sub += ' +1 vida ♥';
+      const sub = scorerName ? `${scorerName} marcou!` : '';
       document.getElementById('goalSub').textContent = sub;
       showOverlay('ovGoal');
 
@@ -136,6 +139,21 @@ function _handleMessage(msg) {
           state.gameState = 'gameover';
         }, 1600);
       }
+      break;
+    }
+
+    case 'upgrade_pick':
+      state.gameState = 'upgrade';
+      showUpgradeCards(msg.cards, msg.goals_scored, state.mySlot, msg.timeout, send);
+      break;
+
+    case 'upgrade_result': {
+      const s = state.server;
+      s.goals_scored    = msg.goals_scored;
+      s.lives           = msg.lives;
+      s.paddle_len_mult = msg.paddle_len_mult;
+      s.speed_mult      = msg.speed_mult;
+      updateScoreUI();
       break;
     }
 
