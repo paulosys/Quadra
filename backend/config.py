@@ -35,7 +35,7 @@ POWERUP_RADIUS:        float     = float(os.getenv("POWERUP_RADIUS",        0.03
 POWERUP_SPAWN_MIN:     float     = float(os.getenv("POWERUP_SPAWN_MIN",     8.0))
 POWERUP_SPAWN_MAX:     float     = float(os.getenv("POWERUP_SPAWN_MAX",     14.0))
 POWERUP_TYPES:         list[str] = ["double", "speed", "movinggoal", "snitch", "portal", "hurricane"]
-POWERUP_WEIGHTS:       list[int] = [4, 3, 2, 2, 2, 2]
+POWERUP_WEIGHTS:       list[int] = [4, 3, 1, 2, 2, 2]
 POWERUP_QUEUE_SIZE:    int       = int(os.getenv("POWERUP_QUEUE_SIZE",      4))
 MAX_POWERUPS_ON_FIELD: int       = int(os.getenv("MAX_POWERUPS_ON_FIELD",   2))
 MAX_BALLS:             int       = int(os.getenv("MAX_BALLS",                4))
@@ -59,7 +59,7 @@ PORTAL_ENTRY_DELAY: float = float(os.getenv("PORTAL_ENTRY_DELAY", 0.25))  # seco
 
 HURRICANE_DURATION: float = float(os.getenv("HURRICANE_DURATION", 6.0))
 HURRICANE_RADIUS:   float = float(os.getenv("HURRICANE_RADIUS",   0.30))
-HURRICANE_STRENGTH: float = float(os.getenv("HURRICANE_STRENGTH", 0.10))   # rad/tick rotation — high = strong spin
+HURRICANE_STRENGTH: float = float(os.getenv("HURRICANE_STRENGTH", 0.05))   # rad/tick rotation — high = strong spin
 HURRICANE_PULL:     float = float(os.getenv("HURRICANE_PULL",     0.004))  # centripetal accel toward center
 
 # ── Corner power-ups (4-player only) ───────────────────────────────────────────
