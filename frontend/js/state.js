@@ -27,6 +27,7 @@ export const state = {
     corner_goals_active: [false, false, false, false],
     paddle_len_mult:     [1, 1, 1, 1],
     speed_mult:          [1, 1, 1, 1],
+    powerup_spawn_timer: 0,
   },
 
   /** Interpolated display positions (updated each frame in renderer) */

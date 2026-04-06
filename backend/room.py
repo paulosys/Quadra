@@ -508,8 +508,9 @@ class Room:
             ],
             "corner_goals_active": [t > 0 for t in self._corner_goal_timers],
             "debug_freeze_goals":  self.debug_freeze_goals,
-            "paddle_len_mult": self.paddle_len_mult[:],
-            "speed_mult":      self.speed_mult[:],
+            "paddle_len_mult":    self.paddle_len_mult[:],
+            "speed_mult":         self.speed_mult[:],
+            "powerup_spawn_timer": self._powerup_mgr.spawn_timer,
         }
 
     # ── Internals ─────────────────────────────────────────────────────────────

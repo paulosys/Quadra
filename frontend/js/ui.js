@@ -130,3 +130,14 @@ export function updatePowerupQueue(queue) {
     el.appendChild(div);
   }
 }
+
+const SPAWN_MAX = 14.0; // matches POWERUP_SPAWN_MAX in config.py
+
+export function updateSpawnTimer(timer) {
+  const secEl  = document.getElementById('pq-timer-sec');
+  const fillEl = document.getElementById('pq-timer-fill');
+  if (!secEl || !fillEl) return;
+  const pct = timer > 0 ? Math.max(0, Math.min(100, (1 - timer / SPAWN_MAX) * 100)) : 100;
+  secEl.textContent  = timer > 0 ? `${Math.ceil(timer)}s` : '…';
+  fillEl.style.width = `${pct}%`;
+}

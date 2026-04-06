@@ -7,7 +7,7 @@ import { state } from './state.js';
 import { playBounce, playGoal, playPowerupCollect, playEliminated } from './audio.js';
 import {
   showOverlay, hideAllOverlays,
-  showWaiting, updateScoreUI, updatePowerupQueue,
+  showWaiting, updateScoreUI, updatePowerupQueue, updateSpawnTimer,
   showUpgradeCards, hideUpgradeCards,
 } from './ui.js';
 
@@ -103,8 +103,10 @@ function _handleMessage(msg) {
       s.debug_freeze_goals  = msg.debug_freeze_goals    || false;
       s.paddle_len_mult     = msg.paddle_len_mult        || [1, 1, 1, 1];
       s.speed_mult          = msg.speed_mult             || [1, 1, 1, 1];
+      s.powerup_spawn_timer = msg.powerup_spawn_timer    ?? 0;
       updateScoreUI();
       updatePowerupQueue(s.powerup_queue);
+      updateSpawnTimer(s.powerup_spawn_timer);
       break;
     }
 
