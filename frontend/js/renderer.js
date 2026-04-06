@@ -5,7 +5,7 @@
 import {
   FIELD_MARGIN, PADDLE_THICK, PADDLE_LEN_H, PADDLE_LEN_V,
   BALL_R, GOAL_DEPTH, GOAL_HALF_H, GOAL_HALF_V, POWERUP_RADIUS, PORTAL_RADIUS,
-  HURRICANE_RADIUS,
+  HURRICANE_RADIUS, PULSE_RADIUS_NORMAL, PULSE_RADIUS_PERFECT, PULSE_COOLDOWN_SECS,
 } from './config.js';
 import { state } from './state.js';
 import { spawnFire, updateAndDrawFire } from './particles.js';
@@ -54,6 +54,8 @@ export function draw() {
   _drawCornerPowerups(st, S, fm);
 
   _drawPaddles(st, pt, fT, fB, fL, fR, S);
+  _drawPulseReadiness(st, fT, fB, fL, fR, S);
+  _drawPulseEffects(fT, fB, fL, fR, S);
   updateAndDrawFire(ctx);
   if (state.kickoff) {
     _drawKickoff(S, st);
@@ -447,6 +449,124 @@ function _drawPowerup(pu, S) {
   ctx.restore();
 }
 
+function _paddleCenter(slot, fT, fB, fL, fR) {
+  const dp = state.displayPads;
+  const S  = fR / (1 - FIELD_MARGIN);   // recover S from fR
+  switch (slot) {
+    case 0: return { x: dp[0] * S, y: fT };
+    case 1: return { x: dp[1] * S, y: fB };
+    case 2: return { x: fL,        y: dp[2] * S };
+    case 3: return { x: fR,        y: dp[3] * S };
+  }
+}
+
+function _nearestBallDist(slot, st) {
+  const balls = st.balls || [];
+  if (!balls.length) return Infinity;
+  const isH    = slot <= 1;
+  const wall   = (slot === 0 || slot === 2) ? FIELD_MARGIN : 1.0 - FIELD_MARGIN;
+  const padPos = (st.paddles || [0.5, 0.5, 0.5, 0.5])[slot];
+  const half   = isH ? PADDLE_LEN_H / 2 : PADDLE_LEN_V / 2;
+  let best = Infinity;
+  for (const b of balls) {
+    const pos  = isH ? b.y : b.x;
+    const perp = isH ? b.x : b.y;
+    const dist = Math.abs(pos - wall);
+    if (Math.abs(perp - padPos) <= half * 2.5 && dist < best) best = dist;
+  }
+  return best;
+}
+
+function _drawPulseReadiness(st, fT, fB, fL, fR, S) {
+  if (state.mySlot < 0 || state.gameState !== 'playing') return;
+  if ((st.eliminated || [])[state.mySlot]) return;
+
+  const ready = (Date.now() - state.pulseLastFired) / 1000 >= PULSE_COOLDOWN_SECS;
+  const lm    = st.paddle_len_mult || [1, 1, 1, 1];
+  const isH   = state.mySlot <= 1;
+  const len   = (isH ? PADDLE_LEN_H : PADDLE_LEN_V) * lm[state.mySlot] * S;
+  const pt    = PADDLE_THICK * S;
+  const { x, y } = _paddleCenter(state.mySlot, fT, fB, fL, fR);
+
+  if (!ready) {
+    // Cooldown bar inside paddle
+    const elapsed  = (Date.now() - state.pulseLastFired) / 1000;
+    const fraction = Math.min(elapsed / PULSE_COOLDOWN_SECS, 1);
+    const barLen   = len * fraction;
+    const barH     = pt * 0.38;
+    ctx.save();
+    ctx.globalAlpha = 0.80;
+    ctx.fillStyle   = '#3399ff';
+    ctx.shadowColor = '#3399ff';
+    ctx.shadowBlur  = 6;
+    if (isH) {
+      ctx.fillRect(x - barLen / 2, y - barH / 2, barLen, barH);
+    } else {
+      ctx.fillRect(x - barH / 2, y - barLen / 2, barH, barLen);
+    }
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    return;
+  }
+
+  // Ready — proximity glow
+  const dist = _nearestBallDist(state.mySlot, st);
+  let glowColor;
+  if      (dist <= PULSE_RADIUS_PERFECT) glowColor = 'rgba(255,215,0,0.70)';
+  else if (dist <= PULSE_RADIUS_NORMAL)  glowColor = 'rgba(100,220,255,0.55)';
+  else                                   glowColor = 'rgba(80,160,255,0.28)';
+
+  ctx.save();
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur  = 14;
+  ctx.strokeStyle = glowColor;
+  ctx.lineWidth   = 2;
+  if (isH) {
+    _rrPath(x - len / 2 - 3, y - pt / 2 - 3, len + 6, pt + 6, 7);
+  } else {
+    _rrPath(x - pt / 2 - 3, y - len / 2 - 3, pt + 6, len + 6, 7);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function _drawPulseEffects(fT, fB, fL, fR, S) {
+  const now = Date.now();
+  state.pulseEffects = state.pulseEffects.filter(e => now - e.startTime < 550);
+
+  // Per-slot: semicircle faces inward (toward field center)
+  const ARCS = [
+    [0,            Math.PI],        // slot 0 TOP    → lower half
+    [Math.PI,      Math.PI * 2],    // slot 1 BOTTOM → upper half
+    [-Math.PI / 2, Math.PI / 2],    // slot 2 LEFT   → right half
+    [Math.PI / 2,  Math.PI * 1.5],  // slot 3 RIGHT  → left half
+  ];
+
+  for (const e of state.pulseEffects) {
+    const progress = (now - e.startTime) / 550;
+    const alpha    = (1 - progress) * (e.perfect ? 0.85 : 0.70);
+    const r        = progress * S * 0.30;
+    const lw       = Math.max(1, 3.5 * (1 - progress * 0.6));
+    const { x, y } = _paddleCenter(e.slot, fT, fB, fL, fR);
+    const [startA, endA] = ARCS[e.slot] || [0, Math.PI * 2];
+
+    const color = e.perfect ? `rgba(255,215,0,${alpha.toFixed(2)})`
+                : e.hit     ? `rgba(100,220,255,${alpha.toFixed(2)})`
+                :              `rgba(140,140,140,${alpha.toFixed(2)})`;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r, startA, endA);
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = lw;
+    if (e.perfect) { ctx.shadowColor = 'rgba(255,215,0,0.6)'; ctx.shadowBlur = 10; }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+}
+
 function _drawPadH(cx, cy, len, thick, elim, isMe) {
   const x = cx - len / 2, y = cy - thick / 2;
   ctx.fillStyle = elim ? '#181818' : '#7a2030'; _rrFill(x-4, y-2, len+8, thick+4, 6);
@@ -540,14 +660,16 @@ function _drawCornerPowerups(st, S, fm) {
 }
 
 function _drawKickoff(S, st) {
-  const ko  = state.kickoff;
-  const cx  = S * 0.5, cy = S * 0.5;
-  const t   = Date.now();
-  const elapsed = (t - ko.startTime) / 1000;
-  const angle   = elapsed * ko.rotSpeed;
-  const pulse   = Math.sin(t / 350) * 0.5 + 0.5;
-  const r       = S * 0.13;
-  const br      = BALL_R * S;
+  const ko      = state.kickoff;
+  const cx      = S * 0.5, cy = S * 0.5;
+  const t       = Date.now();
+  const elapsed  = (t - ko.startTime) / 1000;
+  const angle    = elapsed * ko.rotSpeed;
+  const pulse    = Math.sin(t / 350) * 0.5 + 0.5;
+  const r        = S * 0.065;
+  const br       = BALL_R * S;
+  const timeLeft = Math.max(0, ko.timeout - elapsed);
+  const fraction = Math.max(0, timeLeft / ko.timeout);
 
   // ── Ball at centre ─────────────────────────────────────────────────────────
   const bg = ctx.createRadialGradient(cx - br * 0.3, cy - br * 0.3, br * 0.05, cx, cy, br);
@@ -575,7 +697,6 @@ function _drawKickoff(S, st) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(angle);
-
   ctx.shadowColor = '#ffff40';
   ctx.shadowBlur  = 14;
   ctx.strokeStyle = `rgba(255,255,80,${alpha})`;
@@ -585,7 +706,6 @@ function _drawKickoff(S, st) {
   ctx.moveTo(br * 1.2, 0);
   ctx.lineTo(shaft, 0);
   ctx.stroke();
-
   ctx.fillStyle = `rgba(255,255,80,${alpha})`;
   ctx.beginPath();
   ctx.moveTo(shaft + head * 0.5, 0);
@@ -594,35 +714,57 @@ function _drawKickoff(S, st) {
   ctx.closePath();
   ctx.fill();
   ctx.shadowBlur = 0;
-
   ctx.restore();
 
   // ── Label ──────────────────────────────────────────────────────────────────
-  const isMe      = state.mySlot === ko.scorer;
+  const isMe       = state.mySlot === ko.scorer;
   const scorerName = st.names[ko.scorer] || `Jogador ${ko.scorer + 1}`;
-  const timeLeft  = Math.max(0, ko.timeout - elapsed);
-
   ctx.save();
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'bottom';
   ctx.shadowColor  = '#000000';
   ctx.shadowBlur   = 8;
-
   if (isMe) {
     ctx.font      = `bold ${Math.floor(S * 0.042)}px 'Bebas Neue', sans-serif`;
     ctx.fillStyle = '#ffee55';
-    ctx.fillText('CHUTE! (espaço / botão)', cx, cy - r - 12);
+    ctx.fillText('CHUTE! (espaço / botão)', cx, cy - r - 8);
   } else {
     ctx.font      = `bold ${Math.floor(S * 0.038)}px 'Bebas Neue', sans-serif`;
     ctx.fillStyle = '#dddddd';
-    ctx.fillText(`${scorerName} vai chutar…`, cx, cy - r - 12);
+    ctx.fillText(`${scorerName} vai chutar…`, cx, cy - r - 8);
   }
+  ctx.restore();
 
-  ctx.font         = `${Math.floor(S * 0.032)}px 'Bebas Neue', sans-serif`;
-  ctx.fillStyle    = `rgba(200,200,200,${(0.55 + pulse * 0.25).toFixed(2)})`;
-  ctx.textBaseline = 'top';
-  ctx.fillText(`${Math.ceil(timeLeft)}s`, cx, cy + r + 10);
+  // ── Progress bar inside scorer's paddle ────────────────────────────────────
+  const fm  = FIELD_MARGIN;
+  const fT  = fm * S, fB = (1 - fm) * S;
+  const fL  = fm * S, fR = (1 - fm) * S;
+  const pt  = PADDLE_THICK * S;
+  const dp  = state.displayPads;
+  const lm  = st.paddle_len_mult || [1, 1, 1, 1];
+  const sc  = ko.scorer;
+  const isH = sc <= 1;
+  const padLen   = (isH ? PADDLE_LEN_H : PADDLE_LEN_V) * lm[sc] * S;
+  const barLen   = padLen * fraction;
+  const barH     = pt * 0.38;
+  const hue      = fraction * 120;
+  const barColor = `hsl(${hue.toFixed(0)},100%,58%)`;
 
+  ctx.save();
+  ctx.globalAlpha = 0.88;
+  ctx.fillStyle   = barColor;
+  ctx.shadowColor = barColor;
+  ctx.shadowBlur  = 10;
+  if (sc === 0) {
+    ctx.fillRect(dp[sc]*S - barLen/2, fT + pt*0.5 - barH/2, barLen, barH);
+  } else if (sc === 1) {
+    ctx.fillRect(dp[sc]*S - barLen/2, fB - pt*0.5 - barH/2, barLen, barH);
+  } else if (sc === 2) {
+    ctx.fillRect(fL + pt*0.5 - barH/2, dp[sc]*S - barLen/2, barH, barLen);
+  } else {
+    ctx.fillRect(fR - pt*0.5 - barH/2, dp[sc]*S - barLen/2, barH, barLen);
+  }
+  ctx.shadowBlur = 0;
   ctx.restore();
 }
 

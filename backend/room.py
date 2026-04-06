@@ -19,8 +19,11 @@ from websockets.server import WebSocketServerProtocol
 from config import (
     BALL_R, BALL_SPEED_INIT, BALL_SPEED_MAX, FIELD_MARGIN, LIVES_START,
     MOVING_GOAL_AMP, MOVING_GOAL_DURATION, MOVING_GOAL_SPEED,
+    PADDLE_LEN_H, PADDLE_LEN_V,
     PORTAL_COOLDOWN, PORTAL_DURATION, PORTAL_ENTRY_DELAY, PORTAL_MIN_DIST,
     PORTAL_RADIUS, PORTAL_ROT_SPEED,
+    PULSE_COOLDOWN, PULSE_FORCE_NORMAL, PULSE_FORCE_PERFECT,
+    PULSE_RADIUS_NORMAL, PULSE_RADIUS_PERFECT,
     SNITCH_TURN_CHANCE,
     SPEED_BOOST_FACTOR, TICK_DT,
     HURRICANE_DURATION, HURRICANE_PULL, HURRICANE_RADIUS, HURRICANE_STRENGTH,
@@ -92,6 +95,9 @@ class Room:
         self._corner_goal_move_time: float       = 0.0
 
         self.debug_freeze_goals: bool = False
+
+        # Pulse cooldowns (per player slot)
+        self.pulse_cooldowns: list[float] = [0.0, 0.0, 0.0, 0.0]
 
         # Kickoff phase state
         self.kickoff_event:  Optional[asyncio.Event] = None
@@ -171,6 +177,59 @@ class Room:
 
     # ── Physics tick ──────────────────────────────────────────────────────────
 
+    def handle_pulse(self, slot: int) -> Optional[dict]:
+        """Process a pulse action from a player. Returns result dict or None if on cooldown/inactive."""
+        if self.state != "playing":
+            return None
+        if slot not in self.players or self.eliminated[slot]:
+            return None
+        if self.pulse_cooldowns[slot] > 0:
+            return None
+
+        side = Side(slot)
+        if side in (Side.TOP, Side.BOTTOM):
+            main_attr, vel_attr, perp_attr = 'y', 'vy', 'x'
+            wall        = FIELD_MARGIN if side == Side.TOP else 1.0 - FIELD_MARGIN
+            inward      = +1 if side == Side.TOP else -1
+            paddle_half = PADDLE_LEN_H / 2
+        else:
+            main_attr, vel_attr, perp_attr = 'x', 'vx', 'y'
+            wall        = FIELD_MARGIN if side == Side.LEFT else 1.0 - FIELD_MARGIN
+            inward      = +1 if side == Side.LEFT else -1
+            paddle_half = PADDLE_LEN_V / 2
+
+        paddle_pos = self.paddles[slot]
+        best_ball  = None
+        best_dist  = float('inf')
+        for ball in self.balls:
+            if ball.id in self._pending_teleports:
+                continue
+            pos           = getattr(ball, main_attr)
+            perp          = getattr(ball, perp_attr)
+            dist          = abs(pos - wall)
+            parallel_dist = abs(perp - paddle_pos)
+            if dist <= PULSE_RADIUS_NORMAL and parallel_dist <= paddle_half * 2.5:
+                if dist < best_dist:
+                    best_dist = dist
+                    best_ball = ball
+
+        self.pulse_cooldowns[slot] = PULSE_COOLDOWN
+
+        if best_ball is None:
+            return {"hit": False, "perfect": False}
+
+        perfect = best_dist <= PULSE_RADIUS_PERFECT
+        force   = PULSE_FORCE_PERFECT if perfect else PULSE_FORCE_NORMAL
+        setattr(best_ball, vel_attr, getattr(best_ball, vel_attr) + inward * force)
+
+        speed_cap = BALL_SPEED_MAX * SPEED_BOOST_FACTOR if best_ball.boosted else BALL_SPEED_MAX
+        spd = best_ball.speed
+        if spd > speed_cap:
+            best_ball.vx = best_ball.vx / spd * speed_cap
+            best_ball.vy = best_ball.vy / spd * speed_cap
+
+        return {"hit": True, "perfect": perfect}
+
     def tick(self) -> tuple[Optional[Side], Optional[int], List[str]]:
         """
         Advance one physics step.
@@ -178,6 +237,7 @@ class Room:
         scorer_slot is the player who last touched the ball that scored.
         """
         self._tick_boost_timers()
+        self._tick_pulse_cooldowns()
         self._tick_snitch_movement()
         self._tick_moving_goals()
         self._tick_portals()
@@ -208,6 +268,11 @@ class Room:
                 scorer = ball.last_touch
 
         return scored, scorer, collected
+
+    def _tick_pulse_cooldowns(self) -> None:
+        for i in range(4):
+            if self.pulse_cooldowns[i] > 0:
+                self.pulse_cooldowns[i] = max(0.0, self.pulse_cooldowns[i] - TICK_DT)
 
     def _tick_boost_timers(self) -> None:
         for ball in self.balls:

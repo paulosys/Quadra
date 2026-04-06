@@ -123,6 +123,17 @@ async def _message_loop(ws: WebSocketServerProtocol, room: Room, slot: int) -> N
                 if room.state == "kickoff":
                     room.handle_kick_direction(slot, msg.get("angle", 0.0))
 
+        elif t == "pulse":
+            async with room.lock:
+                result = room.handle_pulse(slot)
+                if result is not None:
+                    await room.broadcast({
+                        "type":    "pulse",
+                        "slot":    slot,
+                        "hit":     result["hit"],
+                        "perfect": result["perfect"],
+                    })
+
         elif t == "debug_toggle_freeze":
             async with room.lock:
                 room.debug_freeze_goals = not room.debug_freeze_goals
