@@ -5,6 +5,7 @@ services:
     build: .
     container_name: quadra
     restart: unless-stopped
+    env_file: .env
     ports:
-      - "8080:8080"   # HTTP — página do jogo
-      - "8765:8765"   # WebSocket — servidor do jogo
+      - "${HTTP_PORT:-8080}:${HTTP_PORT:-8080}"   # HTTP — página do jogo
+      - "${WS_PORT:-8765}:${WS_PORT:-8765}"        # WebSocket — servidor do jogo

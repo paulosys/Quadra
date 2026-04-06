@@ -3,6 +3,7 @@ Entrypoint: runs HTTP static server (port 8080) + WS game server (port 8765).
 """
 import asyncio
 import logging
+import re
 from pathlib import Path
 
 import websockets
@@ -23,8 +24,18 @@ async def _start_http() -> None:
     async def index(request):
         return web.FileResponse(STATIC_DIR / "index.html")
 
+    async def js_config(request):
+        text = (STATIC_DIR / "js" / "config.js").read_text()
+        text = re.sub(
+            r'export const WS_URL = .*',
+            f'export const WS_URL = `ws://${{window.location.hostname}}:{config.WS_PORT}`;',
+            text,
+        )
+        return web.Response(text=text, content_type="application/javascript")
+
     app.router.add_get("/", index)
     app.router.add_get("/index.html", index)
+    app.router.add_get("/js/config.js", js_config)
     app.router.add_static("/css/", STATIC_DIR / "css")
     app.router.add_static("/js/",  STATIC_DIR / "js")
 
