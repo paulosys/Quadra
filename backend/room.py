@@ -153,8 +153,14 @@ class Room:
         self._tick_hurricane()
         self._tick_corner_powerups()
 
-        collected = self._powerup_mgr.tick(self.powerups, self.balls, self._next_id)
+        collected_with_owners = self._powerup_mgr.tick(self.powerups, self.balls, self._next_id)
+        collected = [t for t, _ in collected_with_owners]
         self._apply_room_effects(collected)
+
+        # Silent goal counter increment for "ghostgoal" power-up
+        for ptype, collector in collected_with_owners:
+            if ptype == "ghostgoal" and collector is not None and collector in self.players:
+                self.goals_scored[collector] += 1
 
         players_set = set(self.players.keys())
         scored: Optional[Side] = None

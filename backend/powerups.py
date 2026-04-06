@@ -44,10 +44,10 @@ class PowerUpManager:
         powerups: List[PowerUp],
         balls:    List[Ball],
         next_id:  Callable[[], int],
-    ) -> List[str]:
+    ) -> List[tuple[str, int | None]]:
         """
         Advance one tick: maybe spawn, detect collections, apply ball effects.
-        Returns the list of collected powerup types (Room handles room-level ones).
+        Returns list of (powerup_type, collector_slot) tuples (Room handles room-level ones).
         """
         self.spawn_timer -= TICK_DT
         if self.spawn_timer <= 0:
@@ -88,8 +88,8 @@ class PowerUpManager:
         powerups: List[PowerUp],
         balls:    List[Ball],
         next_id:  Callable[[], int],
-    ) -> List[str]:
-        collected: List[str] = []
+    ) -> List[tuple[str, int | None]]:
+        collected: List[tuple[str, int | None]] = []
         hit: set[int] = set()
 
         for ball in balls:
@@ -99,7 +99,7 @@ class PowerUpManager:
                 dx = ball.x - pu.x
                 dy = ball.y - pu.y
                 if math.sqrt(dx * dx + dy * dy) < BALL_R + POWERUP_RADIUS:
-                    collected.append(pu.type)
+                    collected.append((pu.type, ball.last_touch))
                     self._apply_to_ball(ball, pu, balls, next_id)
                     hit.add(id(pu))
 

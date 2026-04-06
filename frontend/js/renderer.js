@@ -424,6 +424,7 @@ function _drawPowerup(pu, S) {
     snitch:     { fill: 'rgba(255,215,0,0.18)',    stroke: '#ffd700', shadow: '#ffd700', label: '✦', font: `${Math.floor(pr * 1.15)}px Arial` },
     portal:     { fill: 'rgba(160,60,255,0.18)',   stroke: '#a040ff', shadow: '#a040ff', label: '◈', font: `${Math.floor(pr * 1.1)}px Arial` },
     hurricane:  { fill: 'rgba(0,200,180,0.18)',    stroke: '#00c8b4', shadow: '#00c8b4', label: '🌀', font: `${Math.floor(pr * 1.1)}px Arial` },
+    ghostgoal:  { fill: 'rgba(255,215,0,0.18)',    stroke: '#ffdd00', shadow: '#ffdd00', label: '⚽', font: `${Math.floor(pr * 1.1)}px Arial` },
   };
   const s = styles[pu.type] || styles.speed;
   ctx.fillStyle   = s.fill;
