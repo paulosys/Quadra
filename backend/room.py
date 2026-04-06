@@ -44,10 +44,11 @@ _CORNER_POWERUP_TYPES = ["movinggoal"]
 
 class Room:
     def __init__(self, room_id: str) -> None:
-        self.id       = room_id
-        self.state    = "waiting"
-        self.lock     = asyncio.Lock()
-        self.task:    Optional[asyncio.Task] = None
+        self.id         = room_id
+        self.state      = "waiting"
+        self.lock       = asyncio.Lock()
+        self.task:      Optional[asyncio.Task] = None
+        self.generation = 0  # incremented on each reset; used to ignore stale disconnects
 
         # Players
         self.players: Dict[int, WebSocketServerProtocol] = {}
@@ -166,6 +167,7 @@ class Room:
         self.state      = "waiting"
         self.players    = {}
         self.names      = {}
+        self.generation += 1  # invalidate any in-flight _disconnect from old connections
 
     # ── Physics tick ──────────────────────────────────────────────────────────
 

@@ -25,11 +25,12 @@ log = logging.getLogger("quadra")
 
 
 async def handler(ws: WebSocketServerProtocol) -> None:
-    room: Optional[Room] = None
-    slot: Optional[int]  = None
+    room:       Optional[Room] = None
+    slot:       Optional[int]  = None
+    generation: Optional[int]  = None
 
     try:
-        room, slot = await _join(ws)
+        room, slot, generation = await _join(ws)
         if room is None:
             return
         await _message_loop(ws, room, slot)
@@ -39,19 +40,19 @@ async def handler(ws: WebSocketServerProtocol) -> None:
     except Exception as e:
         log.exception(f"Handler error: {e}")
     finally:
-        await _disconnect(room, slot)
+        await _disconnect(room, slot, generation)
 
 
 # ── Phases ────────────────────────────────────────────────────────────────────
 
-async def _join(ws: WebSocketServerProtocol) -> tuple[Optional[Room], Optional[int]]:
-    """Receive and process the initial join message. Returns (room, slot) or (None, None)."""
+async def _join(ws: WebSocketServerProtocol) -> tuple[Optional[Room], Optional[int], Optional[int]]:
+    """Receive and process the initial join message. Returns (room, slot, generation) or (None, None, None)."""
     raw = await asyncio.wait_for(ws.recv(), timeout=15)
     msg = json.loads(raw)
 
     if msg.get("type") != "join":
         await ws.send(json.dumps({"type": "error", "msg": "Expected join"}))
-        return None, None
+        return None, None, None
 
     room_id = msg.get("room", "default")[:20]
     name    = str(msg.get("name", "Player"))[:16]
@@ -60,7 +61,7 @@ async def _join(ws: WebSocketServerProtocol) -> tuple[Optional[Room], Optional[i
     async with room.lock:
         if room.state not in ("waiting", "gameover"):
             await ws.send(json.dumps({"type": "error", "msg": "Game already in progress"}))
-            return None, None
+            return None, None, None
 
         if room.state == "gameover":
             room.reset_for_new_game()
@@ -68,11 +69,12 @@ async def _join(ws: WebSocketServerProtocol) -> tuple[Optional[Room], Optional[i
         slot = room.next_slot()
         if slot is None:
             await ws.send(json.dumps({"type": "error", "msg": "Room full"}))
-            return None, None
+            return None, None, None
 
         room.players[slot] = ws
         room.names[slot]   = name
-        log.info(f"[{room_id}] '{name}' joined slot {slot} ({SIDE_NAMES[slot]})")
+        generation         = room.generation
+        log.info(f"[{room_id}] '{name}' joined slot {slot} ({SIDE_NAMES[slot]}) gen={generation}")
 
         await ws.send(json.dumps({
             "type":    "joined",
@@ -91,7 +93,7 @@ async def _join(ws: WebSocketServerProtocol) -> tuple[Optional[Room], Optional[i
             "names":   [room.names.get(i, "") for i in range(4)],
         })
 
-    return room, slot
+    return room, slot, generation
 
 
 async def _message_loop(ws: WebSocketServerProtocol, room: Room, slot: int) -> None:
@@ -126,10 +128,15 @@ async def _message_loop(ws: WebSocketServerProtocol, room: Room, slot: int) -> N
                 room.debug_freeze_goals = not room.debug_freeze_goals
 
 
-async def _disconnect(room: Optional[Room], slot: Optional[int]) -> None:
-    if room is None or slot is None:
+async def _disconnect(room: Optional[Room], slot: Optional[int], generation: Optional[int]) -> None:
+    if room is None or slot is None or generation is None:
         return
     async with room.lock:
+        # If the room was reset after this connection joined, skip cleanup —
+        # the slot was already cleared and the new game should not be disturbed.
+        if room.generation != generation:
+            log.info(f"[{room.id}] Slot {slot} stale disconnect (gen {generation} != {room.generation}), ignored")
+            return
         room.players.pop(slot, None)
         log.info(f"[{room.id}] Slot {slot} disconnected")
         await room.broadcast({
