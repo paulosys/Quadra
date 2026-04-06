@@ -10,6 +10,14 @@ const _keys = {};
 let _mLeftHeld  = false;
 let _mRightHeld = false;
 
+function _tryKick(send) {
+  const ko = state.kickoff;
+  if (!ko || state.gameState !== 'kickoff' || state.mySlot !== ko.scorer) return;
+  const elapsed = (Date.now() - ko.startTime) / 1000;
+  const angle   = elapsed * ko.rotSpeed;
+  send({ type: 'kick_direction', angle });
+}
+
 /** Wire up all input listeners once at startup. */
 export function setupInputListeners(send) {
   window.addEventListener('keydown', e => {
@@ -17,15 +25,16 @@ export function setupInputListeners(send) {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code))
       e.preventDefault();
     unlockAudio();
+    if (e.code === 'Space') _tryKick(send);
   });
   window.addEventListener('keyup', e => { _keys[e.code] = false; });
 
   _bindMobileButton(document.getElementById('mLeft'),
-    () => { _mLeftHeld  = true;  unlockAudio(); },
-    () => { _mLeftHeld  = false; }
+    () => { _mLeftHeld = true; unlockAudio(); _tryKick(send); },
+    () => { _mLeftHeld = false; }
   );
   _bindMobileButton(document.getElementById('mRight'),
-    () => { _mRightHeld = true;  unlockAudio(); },
+    () => { _mRightHeld = true; unlockAudio(); _tryKick(send); },
     () => { _mRightHeld = false; }
   );
 }

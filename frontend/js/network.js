@@ -76,10 +76,22 @@ function _handleMessage(msg) {
       state.gameState = 'countdown';
       break;
 
+    case 'kickoff':
+      hideAllOverlays();
+      state.kickoff = {
+        scorer:    msg.scorer,
+        startTime: Date.now(),
+        rotSpeed:  1.8,        // rad/s ≈ 3.5 s per full spin
+        timeout:   msg.timeout,
+      };
+      state.gameState = 'kickoff';
+      break;
+
     case 'start':
       hideAllOverlays();
       state.localPadPos = 0.5;
-      state.gameState = 'playing';
+      state.gameState   = 'playing';
+      state.kickoff     = null;
       break;
 
     case 'state': {

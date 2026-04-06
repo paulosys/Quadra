@@ -6,8 +6,9 @@
 export const state = {
   mySlot:      -1,
   myRoom:      '',
-  gameState:   'connect',   // connect | waiting | countdown | playing | goal | upgrade | gameover
+  gameState:   'connect',   // connect | waiting | countdown | playing | goal | upgrade | kickoff | gameover
   localPadPos: 0.5,
+  kickoff:     null,        // null | { scorer, startTime, rotSpeed, timeout }
 
   /** Last authoritative snapshot received from server */
   server: {

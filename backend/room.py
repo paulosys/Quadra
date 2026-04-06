@@ -92,6 +92,11 @@ class Room:
 
         self.debug_freeze_goals: bool = False
 
+        # Kickoff phase state
+        self.kickoff_event:  Optional[asyncio.Event] = None
+        self.kickoff_angle:  Optional[float]         = None
+        self.kickoff_scorer: Optional[int]            = None
+
         self._id_counter = 0
         self._physics    = PhysicsEngine()
         self._powerup_mgr = PowerUpManager()
@@ -117,10 +122,22 @@ class Room:
 
     # ── Round lifecycle ───────────────────────────────────────────────────────
 
-    def launch_ball(self) -> None:
+    def handle_kick_direction(self, slot: int, angle: float) -> None:
+        """Accept a kick-direction from the scorer during kickoff phase."""
+        if slot != self.kickoff_scorer or self.kickoff_event is None:
+            return
+        self.kickoff_angle = float(angle)
+        self.kickoff_event.set()
+
+    def launch_ball(self, kick_angle: Optional[float] = None) -> None:
         """Reset moveable state and spawn the first ball of a round."""
         self.paddles  = [0.5, 0.5, 0.5, 0.5]
-        self.balls    = [self._make_ball()]
+        if kick_angle is not None:
+            vx = math.cos(kick_angle) * BALL_SPEED_INIT
+            vy = math.sin(kick_angle) * BALL_SPEED_INIT
+            self.balls = [self._make_ball(vx=vx, vy=vy)]
+        else:
+            self.balls = [self._make_ball()]
         self.powerups = []
         self._powerup_mgr.reset()
         self.goal_offsets       = [0.0, 0.0, 0.0, 0.0]

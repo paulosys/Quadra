@@ -116,6 +116,11 @@ async def _message_loop(ws: WebSocketServerProtocol, room: Room, slot: int) -> N
                 if room.state == "upgrade":
                     room.handle_upgrade_pick(slot, msg.get("card"))
 
+        elif t == "kick_direction":
+            async with room.lock:
+                if room.state == "kickoff":
+                    room.handle_kick_direction(slot, msg.get("angle", 0.0))
+
         elif t == "debug_toggle_freeze":
             async with room.lock:
                 room.debug_freeze_goals = not room.debug_freeze_goals

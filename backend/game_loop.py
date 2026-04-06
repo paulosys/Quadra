@@ -22,8 +22,9 @@ _UPGRADE_CARDS = [
     {"id": "paddle", "cost_goals": 2, "label": "+5% Barra",  "desc": "Aumenta 5% a barra do goleiro"},
     {"id": "speed",  "cost_goals": 2, "label": "+10% Veloc.", "desc": "Aumenta 10% a velocidade"},
 ]
-_UPGRADE_TIMEOUT = 10.0  # seconds each player has to pick
-_GOAL_FLASH_PAUSE = 1.5  # brief pause for the goal flash before upgrade screen
+_UPGRADE_TIMEOUT  = 10.0  # seconds each player has to pick
+_GOAL_FLASH_PAUSE = 1.5   # brief pause for the goal flash before upgrade screen
+_KICKOFF_TIMEOUT  = 5.0   # seconds scorer has to aim and kick
 
 
 async def game_loop(room: Room) -> None:
@@ -117,12 +118,48 @@ async def _handle_goal(room: Room, scored: int, scorer: int | None) -> bool:
             return True
 
         await _run_countdown(room)
-        room.launch_ball()
+
+        kickoff_scorer = scorer if (scorer is not None and scorer != scored) else None
+        kick_angle = await _run_kickoff_phase(room, kickoff_scorer)
+        if room.num_players == 0:
+            return True
+
+        room.launch_ball(kick_angle=kick_angle)
         room.state = "playing"
         await room.broadcast({"type": "start"})
         return False
     finally:
         await room.lock.acquire()
+
+
+async def _run_kickoff_phase(room: Room, scorer: int | None) -> float | None:
+    """
+    Let the scorer aim and kick the ball. Returns the chosen angle (radians) or
+    None when there is no scorer (random launch will be used).
+    Called while room.lock is NOT held.
+    """
+    if scorer is None or scorer not in room.players:
+        return None
+
+    room.kickoff_event  = asyncio.Event()
+    room.kickoff_angle  = None
+    room.kickoff_scorer = scorer
+    room.state = "kickoff"
+
+    await room.broadcast({
+        "type":    "kickoff",
+        "scorer":  scorer,
+        "timeout": _KICKOFF_TIMEOUT,
+    })
+
+    try:
+        await asyncio.wait_for(room.kickoff_event.wait(), timeout=_KICKOFF_TIMEOUT)
+    except asyncio.TimeoutError:
+        pass
+
+    room.kickoff_event  = None
+    room.kickoff_scorer = None
+    return room.kickoff_angle  # None → caller uses random
 
 
 async def _run_upgrade_phase(room: Room) -> None:

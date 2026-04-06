@@ -55,7 +55,11 @@ export function draw() {
 
   _drawPaddles(st, pt, fT, fB, fL, fR, S);
   updateAndDrawFire(ctx);
-  _drawBalls(st, S);
+  if (state.kickoff) {
+    _drawKickoff(S, st);
+  } else {
+    _drawBalls(st, S);
+  }
 }
 
 // ── Private drawing helpers ────────────────────────────────────────────────────
@@ -533,6 +537,93 @@ function _drawCornerPowerups(st, S, fm) {
 
     ctx.restore();
   }
+}
+
+function _drawKickoff(S, st) {
+  const ko  = state.kickoff;
+  const cx  = S * 0.5, cy = S * 0.5;
+  const t   = Date.now();
+  const elapsed = (t - ko.startTime) / 1000;
+  const angle   = elapsed * ko.rotSpeed;
+  const pulse   = Math.sin(t / 350) * 0.5 + 0.5;
+  const r       = S * 0.13;
+  const br      = BALL_R * S;
+
+  // ── Ball at centre ─────────────────────────────────────────────────────────
+  const bg = ctx.createRadialGradient(cx - br * 0.3, cy - br * 0.3, br * 0.05, cx, cy, br);
+  bg.addColorStop(0,   '#ffffff');
+  bg.addColorStop(0.6, '#e8e8e0');
+  bg.addColorStop(1,   '#aaaaaa');
+  ctx.fillStyle = bg;
+  ctx.beginPath(); ctx.arc(cx, cy, br, 0, Math.PI * 2); ctx.fill();
+
+  // ── Rotating glow ring ─────────────────────────────────────────────────────
+  ctx.save();
+  ctx.strokeStyle = `rgba(255,220,50,${(0.22 + pulse * 0.14).toFixed(2)})`;
+  ctx.lineWidth   = 2;
+  ctx.shadowColor = '#ffd700';
+  ctx.shadowBlur  = 18;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.shadowBlur  = 0;
+  ctx.restore();
+
+  // ── Arrow (shaft + head) ───────────────────────────────────────────────────
+  const shaft = r * 0.85;
+  const head  = r * 0.32;
+  const alpha = (0.85 + pulse * 0.15).toFixed(2);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+
+  ctx.shadowColor = '#ffff40';
+  ctx.shadowBlur  = 14;
+  ctx.strokeStyle = `rgba(255,255,80,${alpha})`;
+  ctx.lineWidth   = 3.5;
+  ctx.lineCap     = 'round';
+  ctx.beginPath();
+  ctx.moveTo(br * 1.2, 0);
+  ctx.lineTo(shaft, 0);
+  ctx.stroke();
+
+  ctx.fillStyle = `rgba(255,255,80,${alpha})`;
+  ctx.beginPath();
+  ctx.moveTo(shaft + head * 0.5, 0);
+  ctx.lineTo(shaft - head * 0.35, -head * 0.48);
+  ctx.lineTo(shaft - head * 0.35,  head * 0.48);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.restore();
+
+  // ── Label ──────────────────────────────────────────────────────────────────
+  const isMe      = state.mySlot === ko.scorer;
+  const scorerName = st.names[ko.scorer] || `Jogador ${ko.scorer + 1}`;
+  const timeLeft  = Math.max(0, ko.timeout - elapsed);
+
+  ctx.save();
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.shadowColor  = '#000000';
+  ctx.shadowBlur   = 8;
+
+  if (isMe) {
+    ctx.font      = `bold ${Math.floor(S * 0.042)}px 'Bebas Neue', sans-serif`;
+    ctx.fillStyle = '#ffee55';
+    ctx.fillText('CHUTE! (espaço / botão)', cx, cy - r - 12);
+  } else {
+    ctx.font      = `bold ${Math.floor(S * 0.038)}px 'Bebas Neue', sans-serif`;
+    ctx.fillStyle = '#dddddd';
+    ctx.fillText(`${scorerName} vai chutar…`, cx, cy - r - 12);
+  }
+
+  ctx.font         = `${Math.floor(S * 0.032)}px 'Bebas Neue', sans-serif`;
+  ctx.fillStyle    = `rgba(200,200,200,${(0.55 + pulse * 0.25).toFixed(2)})`;
+  ctx.textBaseline = 'top';
+  ctx.fillText(`${Math.ceil(timeLeft)}s`, cx, cy + r + 10);
+
+  ctx.restore();
 }
 
 function _rrPath(x, y, w, h, r) {
