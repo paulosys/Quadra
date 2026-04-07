@@ -25,6 +25,7 @@ export function resize() {
 export function draw() {
   const S  = canvas.width;
   const st = state.server;
+  const n  = st.numSides || 4;
 
   _interpolatePaddles(st, S);
   _syncBallDisplayMap(st);
@@ -33,27 +34,44 @@ export function draw() {
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, S, S);
 
-  const fm  = FIELD_MARGIN;
-  const fL  = fm * S,  fR = (1 - fm) * S;
-  const fT  = fm * S,  fB = (1 - fm) * S;
-  const fW  = fR - fL, fH = fB - fT;
-  const gd  = GOAL_DEPTH  * S;
-  const gwH = GOAL_HALF_H * S;
-  const gwV = GOAL_HALF_V * S;
   const pt  = PADDLE_THICK * S;
-  const go  = st.goal_offsets || [0, 0, 0, 0];
+  const go  = st.goal_offsets || new Array(n).fill(0);
 
-  _drawGoalPockets(st, S, fT, fB, fL, fR, gd, gwH, gwV, go);
-  _drawField(fL, fT, fR, fB, fW, fH, S);
-  _drawFieldBorder(fL, fT, fW, fH);
-  _eraseGoalBorders(st, S, fT, fB, fL, fR, gwH, gwV, go);
+  if (n === 4) {
+    const fm  = FIELD_MARGIN;
+    const fL  = fm * S,  fR = (1 - fm) * S;
+    const fT  = fm * S,  fB = (1 - fm) * S;
+    const fW  = fR - fL, fH = fB - fT;
+    const gd  = GOAL_DEPTH  * S;
+    const gwH = GOAL_HALF_H * S;
+    const gwV = GOAL_HALF_V * S;
 
-  if (st.hurricane_active) _drawHurricane(S, Date.now());
-  for (const pu of (st.powerups || [])) _drawPowerup(pu, S);
-  _drawPortals(st.portals || [], S);
-  _drawCornerPowerups(st, S, fm);
+    _drawGoalPockets(st, S, fT, fB, fL, fR, gd, gwH, gwV, go);
+    _drawField(fL, fT, fR, fB, fW, fH, S);
+    _drawFieldBorder(fL, fT, fW, fH);
+    _eraseGoalBorders(st, S, fT, fB, fL, fR, gwH, gwV, go);
 
-  _drawPaddles(st, pt, fT, fB, fL, fR, S);
+    if (st.hurricane_active) _drawHurricane(S, Date.now());
+    for (const pu of (st.powerups || [])) _drawPowerup(pu, S);
+    _drawPortals(st.portals || [], S);
+    _drawCornerPowerups(st, S, fm);
+
+    _drawPaddles(st, pt, fT, fB, fL, fR, S);
+  } else {
+    const walls = _computeWalls(n, S);
+
+    _drawGoalPocketsPoly(walls, st, S, go);
+    _drawFieldPoly(walls, S);
+    _drawFieldBorderPoly(walls, S);
+    _eraseGoalBordersPoly(walls, st, S, go);
+
+    if (st.hurricane_active) _drawHurricane(S, Date.now());
+    for (const pu of (st.powerups || [])) _drawPowerup(pu, S);
+    _drawPortals(st.portals || [], S);
+
+    _drawPaddlesPoly(walls, st, pt, S);
+  }
+
   updateAndDrawFire(ctx);
   if (state.kickoff) {
     _drawKickoff(S, st);
@@ -65,7 +83,8 @@ export function draw() {
 // ── Private drawing helpers ────────────────────────────────────────────────────
 
 function _interpolatePaddles(st, S) {
-  for (let i = 0; i < 4; i++)
+  const n = st.numSides || 4;
+  for (let i = 0; i < n; i++)
     if (st.names[i]) state.displayPads[i] = _lerp(state.displayPads[i], st.paddles[i], 0.45);
   if (state.mySlot >= 0)
     state.displayPads[state.mySlot] = state.localPadPos;
@@ -638,3 +657,112 @@ function _rrPath(x, y, w, h, r) {
 function _rrFill(x, y, w, h, r) { _rrPath(x, y, w, h, r); ctx.fill(); }
 
 function _lerp(a, b, t) { return a + (b - a) * t; }
+
+// ── Polygon arena helpers (N > 4) ────────────────────────────────────────────
+
+function _computeWalls(n, S) {
+  const inradius = (0.5 - FIELD_MARGIN) * S;
+  const cx = 0.5 * S, cy = 0.5 * S;
+  const halfLen = inradius * Math.tan(Math.PI / n);
+  return Array.from({ length: n }, (_, i) => {
+    const angle = -Math.PI / 2 + i * 2 * Math.PI / n;
+    const nx = Math.cos(angle), ny = Math.sin(angle);
+    const tx = -ny, ty = nx;
+    return { nx, ny, tx, ty, mx: cx + inradius * nx, my: cy + inradius * ny, halfLen };
+  });
+}
+
+/** Trace the polygon outline (right-endpoint of each wall = vertex). */
+function _polyOutlinePath(walls) {
+  ctx.beginPath();
+  for (let i = 0; i < walls.length; i++) {
+    const wd = walls[i];
+    const vx = wd.mx + wd.halfLen * wd.tx;
+    const vy = wd.my + wd.halfLen * wd.ty;
+    i === 0 ? ctx.moveTo(vx, vy) : ctx.lineTo(vx, vy);
+  }
+  ctx.closePath();
+}
+
+function _drawFieldPoly(walls, S) {
+  ctx.save();
+  _polyOutlinePath(walls);
+  ctx.clip();
+  ctx.fillStyle = '#0d3d20'; ctx.fill();
+  ctx.strokeStyle = 'rgba(0,80,30,.35)'; ctx.lineWidth = 0.5;
+  for (let x = 0; x <= S; x += 20) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, S); ctx.stroke(); }
+  for (let y = 0; y <= S; y += 20) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(S, y); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(S * 0.5, S * 0.5, S * 0.118, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+
+function _drawFieldBorderPoly(walls, S) {
+  ctx.strokeStyle = '#c0c0b8'; ctx.lineWidth = 2;
+  _polyOutlinePath(walls);
+  ctx.stroke();
+}
+
+function _drawGoalPocketsPoly(walls, st, S, go) {
+  const gd = GOAL_DEPTH * S;
+  for (let i = 0; i < walls.length; i++) {
+    if (!st.names[i] || st.eliminated[i]) continue;
+    const wd   = walls[i];
+    const gwPoly = GOAL_HALF_H * wd.halfLen * 2;  // goal half in canvas pixels
+    const goff = (go[i] || 0) * S;                // tangential offset in canvas pixels
+    ctx.save();
+    ctx.translate(wd.mx, wd.my);
+    ctx.rotate(Math.atan2(wd.ny, wd.nx));
+    // local +x = outward, local +y = tangent
+    ctx.translate(0, goff);
+    ctx.fillStyle = _goalBg(st, i);
+    // goal pocket extends from x=0 outward to x=gd+4; centered at y=0 ±gwPoly
+    _rrFill(0, -gwPoly, gd + 4, gwPoly * 2, 6);
+    ctx.restore();
+  }
+}
+
+function _eraseGoalBordersPoly(walls, st, S, go) {
+  ctx.strokeStyle = '#0d3d20'; ctx.lineWidth = 3.5;
+  for (let i = 0; i < walls.length; i++) {
+    if (!st.names[i] || st.eliminated[i]) continue;
+    const wd   = walls[i];
+    const gwPoly = GOAL_HALF_H * wd.halfLen * 2;
+    const goff = (go[i] || 0) * S;
+    ctx.save();
+    ctx.translate(wd.mx, wd.my);
+    ctx.rotate(Math.atan2(wd.ny, wd.nx));
+    ctx.translate(0, goff);
+    ctx.beginPath();
+    ctx.moveTo(0, -gwPoly + 1);
+    ctx.lineTo(0,  gwPoly - 1);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function _drawPaddlesPoly(walls, st, pt, S) {
+  const dp = state.displayPads;
+  const lm = st.paddle_len_mult || new Array(walls.length).fill(1);
+  for (let i = 0; i < walls.length; i++) {
+    if (!st.names[i]) continue;
+    const wd     = walls[i];
+    const pw     = PADDLE_LEN_H * lm[i] * wd.halfLen * 2;  // paddle length in canvas pixels
+    const padTang = (dp[i] - 0.5) * 2 * wd.halfLen;        // tangential offset from wall centre
+    ctx.save();
+    ctx.translate(wd.mx, wd.my);
+    ctx.rotate(Math.atan2(wd.ny, wd.nx));
+    // local +x = outward normal, local +y = tangent
+    ctx.translate(0, padTang);
+    // Paddle occupies from x=-pt (into field) to x=0 (at wall face), y=±pw/2
+    ctx.fillStyle = st.eliminated[i] ? '#181818' : '#7a2030';
+    _rrFill(-pt - 4, -pw / 2 - 2, pt + 8, pw + 4, 6);
+    ctx.fillStyle = st.eliminated[i] ? '#2a2a2a' : (state.mySlot === i ? '#4a90d9' : '#2a6db5');
+    _rrFill(-pt, -pw / 2, pt, pw, 5);
+    if (!st.eliminated[i]) {
+      ctx.fillStyle = 'rgba(255,255,255,.18)';
+      _rrFill(-pt + 2, -pw / 2 + 4, pt * 0.35, pw - 8, 2);
+    }
+    ctx.restore();
+  }
+}

@@ -98,23 +98,24 @@ function _handleMessage(msg) {
       for (const ball  of (msg.balls     || [])) { if (ball.bounce)  playBounce();              }
       for (const ptype of (msg.collected || [])) { playPowerupCollect(ptype);                   }
       const s         = state.server;
+      s.numSides      = msg.num_sides     || 4;
       s.balls         = msg.balls         || [];
       s.paddles       = msg.paddles;
       s.lives         = msg.lives;
       s.eliminated    = msg.eliminated;
       s.names         = msg.names;
-      s.goals_scored  = msg.goals_scored  || [0, 0, 0, 0];
+      s.goals_scored  = msg.goals_scored  || new Array(s.numSides).fill(0);
       s.powerups      = msg.powerups      || [];
       s.powerup_queue = msg.powerup_queue || [];
-      s.goal_offsets  = msg.goal_offsets  || [0, 0, 0, 0];
+      s.goal_offsets  = msg.goal_offsets  || new Array(s.numSides).fill(0);
       s.goal_moving   = msg.goal_moving   || false;
       s.portals             = msg.portals               || [];
       s.hurricane_active    = msg.hurricane_active      || false;
       s.corner_powerups     = msg.corner_powerups       || [null, null, null, null];
       s.corner_goals_active = msg.corner_goals_active   || [false, false, false, false];
       s.debug_freeze_goals  = msg.debug_freeze_goals    || false;
-      s.paddle_len_mult     = msg.paddle_len_mult        || [1, 1, 1, 1];
-      s.speed_mult          = msg.speed_mult             || [1, 1, 1, 1];
+      s.paddle_len_mult     = msg.paddle_len_mult        || new Array(s.numSides).fill(1);
+      s.speed_mult          = msg.speed_mult             || new Array(s.numSides).fill(1);
       s.powerup_spawn_timer = msg.powerup_spawn_timer    ?? 0;
       updateScoreUI();
       updatePowerupQueue(s.powerup_queue);

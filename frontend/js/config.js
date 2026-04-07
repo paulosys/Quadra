@@ -14,11 +14,7 @@ export const PORTAL_RADIUS   = 0.045;
 export const HURRICANE_RADIUS = 0.30;
 export const PADDLE_SPEED    = 0.012;
 
-export const SIDE_LABELS = ['Topo', 'Baixo', 'Esquerda', 'Direita'];
-
-export const SIDE_KEYS = [
-  { neg: 'KeyA',      pos: 'KeyD'       },
-  { neg: 'ArrowLeft', pos: 'ArrowRight' },
-  { neg: 'KeyW',      pos: 'KeyS'       },
-  { neg: 'ArrowUp',   pos: 'ArrowDown'  },
+export const SIDE_LABELS = [
+  'Topo', 'Baixo', 'Esquerda', 'Direita',
+  'Slot 5', 'Slot 6', 'Slot 7', 'Slot 8',
 ];

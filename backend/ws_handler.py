@@ -76,12 +76,13 @@ async def _join(ws: WebSocketServerProtocol) -> tuple[Optional[Room], Optional[i
         generation         = room.generation
         log.info(f"[{room_id}] '{name}' joined slot {slot} ({SIDE_NAMES[slot]}) gen={generation}")
 
+        n = max(4, len(room.players))  # at least 4 slots shown while waiting
         await ws.send(json.dumps({
             "type":    "joined",
             "slot":    slot,
             "side":    SIDE_NAMES[slot],
             "room":    room_id,
-            "names":   [room.names.get(i, "") for i in range(4)],
+            "names":   [room.names.get(i, "") for i in range(n)],
             "players": list(room.players.keys()),
         }))
 
@@ -90,7 +91,7 @@ async def _join(ws: WebSocketServerProtocol) -> tuple[Optional[Room], Optional[i
             "slot":    slot,
             "name":    name,
             "players": list(room.players.keys()),
-            "names":   [room.names.get(i, "") for i in range(4)],
+            "names":   [room.names.get(i, "") for i in range(n)],
         })
 
     return room, slot, generation
@@ -139,11 +140,12 @@ async def _disconnect(room: Optional[Room], slot: Optional[int], generation: Opt
             return
         room.players.pop(slot, None)
         log.info(f"[{room.id}] Slot {slot} disconnected")
+        n = max(4, len(room.players))
         await room.broadcast({
             "type":    "player_left",
             "slot":    slot,
             "players": list(room.players.keys()),
-            "names":   [room.names.get(i, "") for i in range(4)],
+            "names":   [room.names.get(i, "") for i in range(n)],
         })
     if room.num_players == 0:
         registry.delete(room.id)

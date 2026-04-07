@@ -14,9 +14,13 @@ class Side(IntEnum):
     BOTTOM = 1
     LEFT   = 2
     RIGHT  = 3
+    SIDE4  = 4
+    SIDE5  = 5
+    SIDE6  = 6
+    SIDE7  = 7
 
 
-SIDE_NAMES: list[str] = ["top", "bottom", "left", "right"]
+SIDE_NAMES: list[str] = ["top", "bottom", "left", "right", "side4", "side5", "side6", "side7"]
 
 
 @dataclass

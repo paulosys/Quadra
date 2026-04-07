@@ -18,6 +18,7 @@ from websockets.server import WebSocketServerProtocol
 
 from config import (
     BALL_R, BALL_SPEED_INIT, BALL_SPEED_MAX, FIELD_MARGIN, LIVES_START,
+    MAX_PLAYERS,
     MOVING_GOAL_AMP, MOVING_GOAL_DURATION, MOVING_GOAL_SPEED,
     PORTAL_COOLDOWN, PORTAL_DURATION, PORTAL_ENTRY_DELAY, PORTAL_MIN_DIST,
     PORTAL_RADIUS, PORTAL_ROT_SPEED,
@@ -28,7 +29,7 @@ from config import (
     CORNER_CHARGE_TIME, CORNER_PROXIMITY, CORNER_GOAL_DURATION,
 )
 from models import Ball, CornerPowerUp, Portal, PowerUp, Side, SIDE_NAMES
-from physics import PhysicsEngine
+from physics import PhysicsEngine, compute_walls
 from powerups import PowerUpManager
 
 # Corner definitions: (owner_a, owner_b, adv_a, adv_b, check_a, check_b)
@@ -54,7 +55,11 @@ class Room:
         self.players: Dict[int, WebSocketServerProtocol] = {}
         self.names:   Dict[int, str] = {}
 
-        # Game state
+        # Number of sides / player slots for the current game (set at game start)
+        self.n_sides: int = 4
+        self._wall_defs   = compute_walls(4)
+
+        # Game state (sized to n_sides; initialised to 4 for waiting room)
         self.lives:        list[int]  = [LIVES_START] * 4
         self.eliminated:   list[bool] = [False] * 4
         self.goals_scored: list[int]  = [0] * 4
@@ -71,7 +76,7 @@ class Room:
         self.powerups:  List[PowerUp] = []
 
         # Moving-goal effect (room-level, applied here after powerup signal)
-        self.goal_offsets:       list[float] = [0.0, 0.0, 0.0, 0.0]
+        self.goal_offsets:       list[float] = [0.0] * 4
         self._goal_moving_timer: float       = 0.0
         self._goal_move_time:    float       = 0.0
 
@@ -83,12 +88,12 @@ class Room:
         # Hurricane effect (room-level)
         self._hurricane_timer: float = 0.0
 
-        # Corner power-up system (only active with 4 players)
+        # Corner power-up system (only active with n_sides == 4)
         self.corner_powerups:     list[Optional[CornerPowerUp]] = [None, None, None, None]
         self._corner_charge:      list[float]                   = [0.0, 0.0, 0.0, 0.0]
         self._corner_spawn_timer: float                         = CORNER_POWERUP_SPAWN_MIN
         # Per-slot moving-goal timers triggered by corner activation
-        self._corner_goal_timers:    list[float] = [0.0, 0.0, 0.0, 0.0]
+        self._corner_goal_timers:    list[float] = [0.0] * 4
         self._corner_goal_move_time: float       = 0.0
 
         self.debug_freeze_goals: bool = False
@@ -109,13 +114,28 @@ class Room:
         return len(self.players)
 
     def next_slot(self) -> Optional[int]:
-        for i in range(4):
+        """Return the lowest free slot up to MAX_PLAYERS."""
+        for i in range(MAX_PLAYERS):
             if i not in self.players:
                 return i
         return None
 
     def alive_slots(self) -> List[int]:
-        return [i for i in range(4) if not self.eliminated[i] and i in self.players]
+        return [i for i in range(self.n_sides) if not self.eliminated[i] and i in self.players]
+
+    def set_n_sides(self, n: int) -> None:
+        """Set arena size and resize all per-slot arrays. Called at game start."""
+        self.n_sides   = n
+        self._wall_defs = compute_walls(n)
+        self.lives           = [LIVES_START] * n
+        self.eliminated      = [False] * n
+        self.goals_scored    = [0] * n
+        self.paddles         = [0.5] * n
+        self.paddle_len_mult = [1.0] * n
+        self.speed_mult      = [1.0] * n
+        self.goal_offsets    = [0.0] * n
+        self._corner_charge       = [0.0] * 4  # corners always 4 (square only)
+        self._corner_goal_timers  = [0.0] * n
 
     def _next_id(self) -> int:
         self._id_counter += 1
@@ -132,7 +152,7 @@ class Room:
 
     def launch_ball(self, kick_angle: Optional[float] = None) -> None:
         """Reset moveable state and spawn the first ball of a round."""
-        self.paddles  = [0.5, 0.5, 0.5, 0.5]
+        self.paddles  = [0.5] * self.n_sides
         if kick_angle is not None:
             vx = math.cos(kick_angle) * BALL_SPEED_INIT
             vy = math.sin(kick_angle) * BALL_SPEED_INIT
@@ -141,7 +161,7 @@ class Room:
             self.balls = [self._make_ball()]
         self.powerups = []
         self._powerup_mgr.reset()
-        self.goal_offsets       = [0.0, 0.0, 0.0, 0.0]
+        self.goal_offsets       = [0.0] * self.n_sides
         self._goal_moving_timer = 0.0
         self._goal_move_time    = 0.0
         self.portals             = []
@@ -151,17 +171,19 @@ class Room:
         self.corner_powerups         = [None, None, None, None]
         self._corner_charge          = [0.0, 0.0, 0.0, 0.0]
         self._corner_spawn_timer     = CORNER_POWERUP_SPAWN_MIN
-        self._corner_goal_timers     = [0.0, 0.0, 0.0, 0.0]
+        self._corner_goal_timers     = [0.0] * self.n_sides
         self._corner_goal_move_time  = 0.0
 
     def reset_for_new_game(self) -> None:
         """Reset between full games (post-gameover)."""
+        self.n_sides      = 4
+        self._wall_defs   = compute_walls(4)
         self.lives        = [LIVES_START] * 4
         self.eliminated   = [False] * 4
         self.goals_scored = [0] * 4
-        self.paddles      = [0.5, 0.5, 0.5, 0.5]
-        self.paddle_len_mult = [1.0, 1.0, 1.0, 1.0]
-        self.speed_mult      = [1.0, 1.0, 1.0, 1.0]
+        self.paddles      = [0.5] * 4
+        self.paddle_len_mult = [1.0] * 4
+        self.speed_mult      = [1.0] * 4
         self.upgrade_picks   = {}
         self.upgrade_all_done = None
         self.state      = "waiting"
@@ -194,6 +216,7 @@ class Room:
                 self.goals_scored[collector] += 1
 
         players_set = set(self.players.keys())
+        wall_defs   = self._wall_defs if self.n_sides > 4 else None
         scored: Optional[Side] = None
         scorer: Optional[int]  = None
         for ball in self.balls:
@@ -201,7 +224,7 @@ class Room:
                 continue  # frozen inside portal — skip physics
             result = self._physics.tick_ball(
                 ball, self.paddles, self.eliminated, players_set, self.goal_offsets,
-                self.paddle_len_mult
+                self.paddle_len_mult, wall_defs
             )
             if result is not None and scored is None and not self.debug_freeze_goals:
                 scored = result
@@ -240,22 +263,23 @@ class Room:
             ball.vy = math.sin(angle) * spd
 
     def _tick_moving_goals(self) -> None:
-        phases = [0.0, math.pi, math.pi / 2, 3 * math.pi / 2]
+        n      = self.n_sides
+        phases = [i * 2 * math.pi / n for i in range(n)]
 
-        # Regular powerup: affects all 4 goals
+        # Regular powerup: affects all goals
         if self._goal_moving_timer > 0:
             self._goal_moving_timer -= TICK_DT
             self._goal_move_time    += TICK_DT
 
         # Corner effect: per-slot timers
         self._corner_goal_move_time += TICK_DT
-        for i in range(4):
+        for i in range(n):
             if self._corner_goal_timers[i] > 0:
                 self._corner_goal_timers[i] -= TICK_DT
 
         # Build final offsets: regular takes priority; corner fills in where regular is inactive
-        new_offsets = [0.0, 0.0, 0.0, 0.0]
-        for i in range(4):
+        new_offsets = [0.0] * n
+        for i in range(n):
             reg = 0.0
             if self._goal_moving_timer > 0:
                 reg = MOVING_GOAL_AMP * math.sin(self._goal_move_time * MOVING_GOAL_SPEED + phases[i])
@@ -267,6 +291,8 @@ class Room:
 
     def _tick_corner_powerups(self) -> None:
         """Spawn corner power-ups and handle activation when both owners are near."""
+        if self.n_sides != 4:
+            return  # corner system only for square arena
         if len(self.players) < 4:
             # Clear corners if a player leaves mid-game
             self.corner_powerups  = [None, None, None, None]
@@ -506,11 +532,12 @@ class Room:
     def state_snapshot(self, collected: Optional[List[str]] = None) -> dict:
         return {
             "type":          "state",
+            "num_sides":     self.n_sides,
             "balls":         [b.to_dict() for b in self.balls],
             "paddles":       self.paddles[:],
             "lives":         self.lives[:],
             "eliminated":    self.eliminated[:],
-            "names":         [self.names.get(i, "") for i in range(4)],
+            "names":         [self.names.get(i, "") for i in range(self.n_sides)],
             "goals_scored":  self.goals_scored[:],
             "game_state":    self.state,
             "powerups":      [p.to_dict() for p in self.powerups],

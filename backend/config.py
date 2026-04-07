@@ -26,6 +26,7 @@ GOAL_HALF_H: float = float(os.getenv("GOAL_HALF_H", 0.168))
 GOAL_HALF_V: float = float(os.getenv("GOAL_HALF_V", 0.168))
 
 # ── Game ───────────────────────────────────────────────────────────────────────
+MAX_PLAYERS:    int   = int(os.getenv("MAX_PLAYERS",    8))
 LIVES_START:    int   = int(os.getenv("LIVES_START",    3))
 GOAL_PAUSE:     float = float(os.getenv("GOAL_PAUSE",   2.0))
 COUNTDOWN_SECS: int   = int(os.getenv("COUNTDOWN_SECS", 3))

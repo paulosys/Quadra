@@ -30,6 +30,7 @@ _KICKOFF_TIMEOUT  = 5.0   # seconds scorer has to aim and kick
 async def game_loop(room: Room) -> None:
     log.info(f"[{room.id}] game loop started")
 
+    room.set_n_sides(max(4, room.num_players))
     await _run_countdown(room)
 
     room.launch_ball()
@@ -97,7 +98,7 @@ async def _handle_goal(room: Room, scored: int, scorer: int | None) -> bool:
         "eliminated_now": eliminated_now,
         "game_over":      game_over,
         "winner":         alive[0] if game_over and alive else -1,
-        "names":          [room.names.get(i, "") for i in range(4)],
+        "names":          [room.names.get(i, "") for i in range(room.n_sides)],
         "goals_scored":   room.goals_scored[:],
         "life_gained":    False,
     })

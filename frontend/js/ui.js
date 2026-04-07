@@ -26,30 +26,42 @@ export function showWaiting(activePlayers) {
 
   const wp = document.getElementById('waiting-players');
   wp.innerHTML = '';
-  for (let i = 0; i < 4; i++) {
+  const numSlots = Math.max(4, activePlayers.length > 0 ? Math.max(...activePlayers) + 1 : 4);
+  for (let i = 0; i < numSlots; i++) {
     const filled = activePlayers.includes(i);
     const name   = state.server.names[i] || (filled ? `Jogador ${i + 1}` : '— vazio —');
     const div    = document.createElement('div');
     div.className = 'wp-slot' + (filled ? ' filled' : '');
-    div.innerHTML = `<span class="dot"></span><span>${SIDE_LABELS[i]}: ${name}</span>`;
+    div.innerHTML = `<span class="dot"></span><span>${SIDE_LABELS[i] || `Slot ${i + 1}`}: ${name}</span>`;
     wp.appendChild(div);
   }
   updateScoreUI();
 }
 
 export function updateScoreUI() {
-  for (let i = 0; i < 4; i++) {
-    const name   = state.server.names[i] || '—';
-    const hearts = state.server.lives[i] > 0
-      ? ('♥ ').repeat(state.server.lives[i]).trim()
-      : '✕';
-    const goals  = state.server.goals_scored?.[i] ?? 0;
-    document.getElementById('sn' + i).textContent = name;
-    document.getElementById('sl' + i).textContent = hearts;
-    document.getElementById('sg' + i).textContent = goals > 0 ? `⚽ ${goals}` : '';
-    document.getElementById('sc' + i).classList.toggle('me',   i === state.mySlot);
-    document.getElementById('sc' + i).classList.toggle('elim', state.server.eliminated[i]);
-    document.getElementById('h'  + i).classList.toggle('me',   i === state.mySlot);
+  const n = state.server.numSides || 4;
+  for (let i = 0; i < 8; i++) {
+    const el = document.getElementById('sc' + i);
+    if (!el) continue;
+    if (i < n) {
+      const name   = state.server.names[i] || '—';
+      const hearts = state.server.lives[i] > 0
+        ? ('♥ ').repeat(state.server.lives[i]).trim()
+        : '✕';
+      const goals  = state.server.goals_scored?.[i] ?? 0;
+      document.getElementById('sn' + i).textContent = name;
+      document.getElementById('sl' + i).textContent = hearts;
+      document.getElementById('sg' + i).textContent = goals > 0 ? `⚽ ${goals}` : '';
+      el.classList.toggle('me',   i === state.mySlot);
+      el.classList.toggle('elim', state.server.eliminated[i]);
+      el.style.display = '';
+      const h = document.getElementById('h' + i);
+      if (h) { h.classList.toggle('me', i === state.mySlot); h.style.display = ''; }
+    } else {
+      el.style.display = 'none';
+      const h = document.getElementById('h' + i);
+      if (h) h.style.display = 'none';
+    }
   }
 }
 

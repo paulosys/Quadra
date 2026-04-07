@@ -2,7 +2,7 @@
  * Input — keyboard and mobile touch → paddle position → server.
  * Receives `send` as an injected dependency to avoid circular imports.
  */
-import { SIDE_KEYS, PADDLE_LEN_H, PADDLE_LEN_V, PADDLE_SPEED } from './config.js';
+import { PADDLE_LEN_H, PADDLE_SPEED } from './config.js';
 import { state } from './state.js';
 import { unlockAudio } from './audio.js';
 
@@ -39,23 +39,46 @@ export function setupInputListeners(send) {
   );
 }
 
+/**
+ * Returns [negKey, posKey] for a given wall slot.
+ * Accounts for both wall orientation (H vs V) AND tangent direction sign,
+ * so that ArrowLeft always moves the paddle visually left/up as expected.
+ */
+function _getWallKeys(slot, numSides) {
+  if (numSides === 4) {
+    return (slot === 0 || slot === 1) ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown'];
+  }
+  const angle = -Math.PI / 2 + slot * 2 * Math.PI / numSides;
+  const nx = Math.cos(angle), ny = Math.sin(angle);
+  const tx = -ny, ty = nx;
+  if (Math.abs(ny) > Math.abs(nx)) {
+    // Horizontal wall: paddle moves along tx. tx>0 → tangent points right → natural L/R.
+    // tx<0 → tangent points left → increasing pos moves paddle LEFT → swap keys.
+    return tx >= 0 ? ['ArrowLeft', 'ArrowRight'] : ['ArrowRight', 'ArrowLeft'];
+  } else {
+    // Vertical wall: paddle moves along ty. ty>0 → tangent points down → natural U/D.
+    // ty<0 → tangent points up → increasing pos moves paddle UP → swap keys.
+    return ty >= 0 ? ['ArrowUp', 'ArrowDown'] : ['ArrowDown', 'ArrowUp'];
+  }
+}
+
 /** Called every animation frame; sends a move message when the paddle moves. */
 export function inputTick(send) {
   if (state.mySlot < 0 || state.gameState !== 'playing') return;
 
-  const isH      = state.mySlot === 0 || state.mySlot === 1;
-  const k        = SIDE_KEYS[state.mySlot];
+  const numSides = state.server.numSides || 4;
+  const [negKey, posKey] = _getWallKeys(state.mySlot, numSides);
   const lenMult  = state.server.paddle_len_mult?.[state.mySlot] ?? 1.0;
   const spdMult  = state.server.speed_mult?.[state.mySlot] ?? 1.0;
-  const half     = isH ? (PADDLE_LEN_H * lenMult) / 2 : (PADDLE_LEN_V * lenMult) / 2;
+  const half     = (PADDLE_LEN_H * lenMult) / 2;
   const speed    = PADDLE_SPEED * spdMult;
   let moved      = false;
 
-  if (_keys[k.neg] || _mLeftHeld) {
+  if (_keys[negKey] || _mLeftHeld) {
     state.localPadPos = Math.max(half, state.localPadPos - speed);
     moved = true;
   }
-  if (_keys[k.pos] || _mRightHeld) {
+  if (_keys[posKey] || _mRightHeld) {
     state.localPadPos = Math.min(1 - half, state.localPadPos + speed);
     moved = true;
   }
