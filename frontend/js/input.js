@@ -63,7 +63,7 @@ function _getWallKeys(slot, numSides) {
 }
 
 /** Called every animation frame; sends a move message when the paddle moves. */
-export function inputTick(send) {
+export function inputTick(send, dt = 1 / 60) {
   if (state.mySlot < 0 || state.gameState !== 'playing') return;
 
   const numSides = state.server.numSides || 4;
@@ -71,7 +71,7 @@ export function inputTick(send) {
   const lenMult  = state.server.paddle_len_mult?.[state.mySlot] ?? 1.0;
   const spdMult  = state.server.speed_mult?.[state.mySlot] ?? 1.0;
   const half     = (PADDLE_LEN_H * lenMult) / 2;
-  const speed    = PADDLE_SPEED * spdMult;
+  const speed    = PADDLE_SPEED * spdMult * dt * 60;
   let moved      = false;
 
   if (_keys[negKey] || _mLeftHeld) {

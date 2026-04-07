@@ -23,9 +23,12 @@ setupInputListeners(send);
 initDebug();
 
 // ── Main loop ──────────────────────────────────────────────────────────────────
-function loop() {
+let _lastTs = null;
+function loop(ts) {
   requestAnimationFrame(loop);
-  inputTick(send);
+  const dt = _lastTs === null ? 1 / 60 : Math.min((ts - _lastTs) / 1000, 0.1);
+  _lastTs = ts;
+  inputTick(send, dt);
   draw();
   debugTick();
   tickHurricaneAmbient(state.server.hurricane_active);
