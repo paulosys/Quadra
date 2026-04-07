@@ -281,6 +281,123 @@ canvas {
   line-height: 1.6;
 }
 
+/* ── Debug Sidebar ── */
+#debug-sidebar {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 8px;
+  background: #0c0c0c;
+  border: 1px solid #1a3a1a;
+  border-radius: 8px;
+  flex-shrink: 0;
+  width: 158px;
+  align-self: stretch;
+  overflow-y: auto;
+  font-size: .58rem;
+  font-family: 'Space Mono', monospace;
+  color: #666;
+}
+#debug-sidebar.active { display: flex; }
+.dbg-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: .95rem;
+  letter-spacing: .25em;
+  color: #00ffaa;
+  text-align: center;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #0f2f1f;
+}
+.dbg-section {
+  font-size: .44rem;
+  letter-spacing: .2em;
+  color: #2a6a4a;
+  text-transform: uppercase;
+  margin-top: 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dbg-hint { color: #1a4a2a; font-size: .4rem; letter-spacing: .1em; }
+.dbg-divider {
+  height: 1px;
+  background: #0f2f1f;
+  flex-shrink: 0;
+  margin: 1px 0;
+}
+#dbg-pu-list { display: flex; flex-direction: column; gap: 2px; }
+.dbg-pu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background .1s, border-color .1s;
+  user-select: none;
+}
+.dbg-pu-item:hover { background: rgba(255,255,255,.04); }
+.dbg-pu-item.selected {
+  background: rgba(0,255,170,.07);
+  border-color: rgba(0,255,170,.25);
+}
+.dbg-pu-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dbg-pu-key {
+  font-size: .44rem;
+  color: #2a4a3a;
+  min-width: 8px;
+}
+.dbg-pu-label {
+  font-size: .55rem;
+  color: #999;
+  flex: 1;
+}
+.dbg-pu-item.selected .dbg-pu-label { color: #fff; font-weight: 700; }
+#dbg-status {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dbg-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px;
+  font-size: .52rem;
+}
+.dbg-stat-row .dbg-s-label {
+  color: #2a6a4a;
+  flex-shrink: 0;
+}
+.dbg-stat-row .dbg-s-val {
+  text-align: right;
+  word-break: break-all;
+  max-width: 90px;
+}
+.dbg-keys {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: .5rem;
+  color: #444;
+}
+.dbg-key {
+  display: inline-block;
+  background: #161616;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: .46rem;
+  color: #666;
+  margin-right: 2px;
+  font-family: 'Space Mono', monospace;
+}
+
 /* mobile paddle buttons */
 #mobile-ctrl {
   display:none;

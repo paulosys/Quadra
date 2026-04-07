@@ -128,6 +128,39 @@ async def _message_loop(ws: WebSocketServerProtocol, room: Room, slot: int) -> N
             async with room.lock:
                 room.debug_freeze_goals = not room.debug_freeze_goals
 
+        elif t == "debug_spawn_powerup":
+            async with room.lock:
+                room.debug_spawn_powerup(
+                    msg.get("powerup_type", "speed"),
+                    msg.get("x", 0.5),
+                    msg.get("y", 0.5),
+                )
+
+        elif t == "debug_teleport_ball":
+            async with room.lock:
+                room.debug_teleport_ball(msg.get("x", 0.5), msg.get("y", 0.5))
+
+        elif t == "debug_add_ball":
+            async with room.lock:
+                room.debug_add_ball()
+
+        elif t == "debug_remove_ball":
+            async with room.lock:
+                room.debug_remove_ball()
+
+        elif t == "debug_mouse_active":
+            async with room.lock:
+                if msg.get("active"):
+                    room.debug_activate_mouse_ball(slot)
+                else:
+                    room.debug_deactivate_mouse_ball()
+
+        elif t == "debug_mouse_move":
+            async with room.lock:
+                room.debug_update_mouse_ball(
+                    msg.get("x", 0.5), msg.get("y", 0.5), slot
+                )
+
 
 async def _disconnect(room: Optional[Room], slot: Optional[int], generation: Optional[int]) -> None:
     if room is None or slot is None or generation is None:
