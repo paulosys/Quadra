@@ -45,7 +45,8 @@ class Room:
         self.powerups: List[PowerUp] = []
 
         # Debug
-        self.debug_freeze_goals: bool = False
+        self.debug_freeze_goals:    bool         = False
+        self.debug_mouse_ball_id:   Optional[int] = None
 
         # Kickoff phase state
         self.kickoff_event:  Optional[asyncio.Event] = None
@@ -151,6 +152,15 @@ class Room:
         """Reset moveable state and spawn the first ball of a round."""
         for p in self.players.values():
             p.paddle_pos = 0.5
+
+        # Preserve mouse ball owner across rounds
+        mouse_owner: Optional[int] = None
+        if self.debug_mouse_ball_id is not None:
+            for b in self.balls:
+                if b.id == self.debug_mouse_ball_id:
+                    mouse_owner = b.last_touch
+                    break
+
         if kick_angle is not None:
             vx = math.cos(kick_angle) * BALL_SPEED_INIT
             vy = math.sin(kick_angle) * BALL_SPEED_INIT
@@ -164,13 +174,19 @@ class Room:
         self._hurricane_mgr.reset()
         self._corner_mgr.reset()
 
+        # Re-create mouse ball if it was active
+        if mouse_owner is not None:
+            self.debug_mouse_ball_id = None
+            self.debug_activate_mouse_ball(mouse_owner)
+
     def reset_for_new_game(self) -> None:
         """Reset between full games (post-gameover)."""
-        self.n_sides    = 4
-        self._wall_defs = compute_walls(4)
-        self.state      = "waiting"
-        self.players    = {}
-        self.generation += 1
+        self.n_sides            = 4
+        self._wall_defs         = compute_walls(4)
+        self.state              = "waiting"
+        self.players            = {}
+        self.generation        += 1
+        self.debug_mouse_ball_id = None
         self._upgrade_mgr.reset()
         self._goal_mgr.reset(4)
         self._corner_mgr.reset()
@@ -287,11 +303,66 @@ class Room:
             "hurricane_active": self._hurricane_mgr.is_active,
             "corner_powerups":  self._corner_mgr.snapshot(),
             "corner_goals_active": self._goal_mgr.slot_goals_active,
-            "debug_freeze_goals":  self.debug_freeze_goals,
+            "debug_freeze_goals":    self.debug_freeze_goals,
+            "debug_mouse_ball_id":   self.debug_mouse_ball_id,
             "paddle_len_mult":    [p.paddle_len_mult if p else 1.0 for p in ordered],
             "speed_mult":         [p.speed_mult      if p else 1.0 for p in ordered],
             "powerup_spawn_timer": self._powerup_mgr.spawn_timer,
         }
+
+    # ── Debug helpers ─────────────────────────────────────────────────────────
+
+    def debug_spawn_powerup(self, ptype: str, x: float, y: float) -> None:
+        from config import POWERUP_TYPES
+        if ptype not in POWERUP_TYPES:
+            return
+        self.powerups.append(PowerUp(id=self._next_id(), x=float(x), y=float(y), type=ptype))
+
+    def debug_teleport_ball(self, x: float, y: float) -> None:
+        """Teleport the first non-mouse ball to (x, y)."""
+        for ball in self.balls:
+            if ball.id != self.debug_mouse_ball_id:
+                ball.x = float(x)
+                ball.y = float(y)
+                return
+
+    def debug_add_ball(self) -> None:
+        from config import MAX_BALLS
+        if len(self.balls) < MAX_BALLS:
+            self.balls.append(self._make_ball())
+
+    def debug_remove_ball(self) -> None:
+        """Remove the last non-mouse ball (allows 0 regular balls)."""
+        for i in range(len(self.balls) - 1, -1, -1):
+            if self.balls[i].id != self.debug_mouse_ball_id:
+                self.balls.pop(i)
+                return
+
+    def debug_activate_mouse_ball(self, slot: int) -> None:
+        """Spawn a mouse-controlled ball and track its id."""
+        if self.debug_mouse_ball_id is not None:
+            return
+        ball = Ball(id=self._next_id(), x=0.5, y=0.5, vx=0.0, vy=0.0, last_touch=slot)
+        self.balls.append(ball)
+        self.debug_mouse_ball_id = ball.id
+
+    def debug_deactivate_mouse_ball(self) -> None:
+        """Remove the mouse-controlled ball."""
+        if self.debug_mouse_ball_id is None:
+            return
+        self.balls = [b for b in self.balls if b.id != self.debug_mouse_ball_id]
+        self.debug_mouse_ball_id = None
+
+    def debug_update_mouse_ball(self, x: float, y: float, slot: int) -> None:
+        """Drive the mouse ball toward (x, y) via velocity — lets physics handle paddle collisions."""
+        if self.debug_mouse_ball_id is None:
+            return
+        for ball in self.balls:
+            if ball.id == self.debug_mouse_ball_id:
+                ball.vx = float(x) - ball.x
+                ball.vy = float(y) - ball.y
+                ball.last_touch = slot
+                break
 
     # ── Internals ─────────────────────────────────────────────────────────────
 

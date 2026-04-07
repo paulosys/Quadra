@@ -12,6 +12,29 @@
 <p class="subtitle">Multiplayer — Ball Defense</p>
 
 <div id="game-area">
+
+  <!-- Debug sidebar (hidden until backtick pressed) -->
+  <div id="debug-sidebar">
+    <div class="dbg-title">DEBUG</div>
+    <div class="dbg-section">PODERES <span class="dbg-hint">clique / 1-7</span></div>
+    <div id="dbg-pu-list"></div>
+    <div class="dbg-divider"></div>
+    <div class="dbg-section">STATUS</div>
+    <div id="dbg-status"></div>
+    <div class="dbg-divider"></div>
+    <div class="dbg-section">TECLAS</div>
+    <div class="dbg-keys">
+      <div><span class="dbg-key">`</span> toggle debug</div>
+      <div><span class="dbg-key">Z</span> zonas colisão</div>
+      <div><span class="dbg-key">G</span> freeze gols</div>
+      <div><span class="dbg-key">M</span> bola no mouse</div>
+      <div><span class="dbg-key">B</span> adicionar bola</div>
+      <div><span class="dbg-key">N</span> remover bola</div>
+      <div><span class="dbg-key">Clique</span> spawn poder</div>
+      <div><span class="dbg-key">Clique dir.</span> teleport</div>
+    </div>
+  </div>
+
   <div id="arena">
     <canvas id="c"></canvas>
     <div id="gflash"></div>

@@ -29,7 +29,8 @@ export const state = {
     corner_goals_active: [false, false, false, false],
     paddle_len_mult:     new Array(8).fill(1),
     speed_mult:          new Array(8).fill(1),
-    powerup_spawn_timer: 0,
+    powerup_spawn_timer:  0,
+    debug_mouse_ball_id:  null,
   },
 
   /** Interpolated display positions (updated each frame in renderer) */

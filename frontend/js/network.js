@@ -114,6 +114,7 @@ function _handleMessage(msg) {
       s.corner_powerups     = msg.corner_powerups       || [null, null, null, null];
       s.corner_goals_active = msg.corner_goals_active   || [false, false, false, false];
       s.debug_freeze_goals  = msg.debug_freeze_goals    || false;
+      s.debug_mouse_ball_id = msg.debug_mouse_ball_id   ?? null;
       s.paddle_len_mult     = msg.paddle_len_mult        || new Array(s.numSides).fill(1);
       s.speed_mult          = msg.speed_mult             || new Array(s.numSides).fill(1);
       s.powerup_spawn_timer = msg.powerup_spawn_timer    ?? 0;
