@@ -1,12 +1,8 @@
-"""
-Domain models — plain data containers for game entities.
-"""
+"""Arena types — Side enum and field objects (PowerUp, Portal, CornerPowerUp)."""
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import Optional
 
 
 class Side(IntEnum):
@@ -21,38 +17,6 @@ class Side(IntEnum):
 
 
 SIDE_NAMES: list[str] = ["top", "bottom", "left", "right", "side4", "side5", "side6", "side7"]
-
-
-@dataclass
-class Ball:
-    id:          int
-    x:           float
-    y:           float
-    vx:          float
-    vy:          float
-    boosted:         bool          = False
-    boost_timer:     float         = 0.0
-    bounce:          bool          = False
-    snitched:        bool          = False
-    snitch_timer:    float         = 0.0
-    portal_cooldown: float         = 0.0
-    last_touch:      Optional[int] = None
-
-    @property
-    def speed(self) -> float:
-        return math.sqrt(self.vx ** 2 + self.vy ** 2)
-
-    def to_dict(self) -> dict:
-        return {
-            "id":       self.id,
-            "x":        self.x,
-            "y":        self.y,
-            "vx":       self.vx,
-            "vy":       self.vy,
-            "boosted":  self.boosted,
-            "bounce":   self.bounce,
-            "snitched": self.snitched,
-        }
 
 
 @dataclass

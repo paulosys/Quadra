@@ -1,9 +1,8 @@
 """
-PowerUpManager — owns the spawn queue/timer and applies ball-level effects.
+PowerUpManager — spawn queue/timer and power-up collision detection.
 
-Room-level effects (e.g. moving goals) are signalled by returning the
-powerup type in the collected list; the Room applies them itself, keeping
-this class free of room state.
+Ball-level and room-level effects are delegated to PowerUpEffectFactory
+(Strategy + Factory patterns), eliminating the if/elif dispatch chain.
 """
 from __future__ import annotations
 
@@ -12,20 +11,27 @@ import random
 from typing import Callable, List
 
 from config import (
-    BALL_R, BALL_SPEED_MAX, FIELD_MARGIN,
-    MAX_BALLS, MAX_POWERUPS_ON_FIELD,
-    POWERUP_QUEUE_SIZE, POWERUP_RADIUS,
-    POWERUP_SPAWN_MAX, POWERUP_SPAWN_MIN,
-    POWERUP_TYPES, POWERUP_WEIGHTS,
-    SNITCH_DURATION,
-    SPEED_BOOST_DURATION, SPEED_BOOST_FACTOR,
+    BALL_R,
+    FIELD_MARGIN,
+    MAX_POWERUPS_ON_FIELD,
+    POWERUP_QUEUE_SIZE,
+    POWERUP_RADIUS,
+    POWERUP_SPAWN_MAX,
+    POWERUP_SPAWN_MIN,
+    POWERUP_TYPES,
+    POWERUP_WEIGHTS,
     TICK_DT,
 )
 from models import Ball, PowerUp
+from powerups.effects.factory import PowerUpEffectFactory
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from events import EventBus
 
 
 class PowerUpManager:
-    """Manages powerup lifecycle: queue, spawning, collision, and ball effects."""
+    """Manages powerup lifecycle: queue, spawning, collision detection, and effect dispatch."""
 
     def __init__(self) -> None:
         self.spawn_timer: float = 0.0
@@ -44,17 +50,18 @@ class PowerUpManager:
         powerups: List[PowerUp],
         balls:    List[Ball],
         next_id:  Callable[[], int],
+        bus:      "EventBus",
     ) -> List[tuple[str, int | None]]:
         """
-        Advance one tick: maybe spawn, detect collections, apply ball effects.
-        Returns list of (powerup_type, collector_slot) tuples (Room handles room-level ones).
+        Advance one tick: maybe spawn, detect collections, dispatch effects.
+        Returns list of (powerup_type, collector_slot) tuples.
         """
         self.spawn_timer -= TICK_DT
         if self.spawn_timer <= 0:
             self._spawn(powerups, next_id)
             self.spawn_timer = random.uniform(POWERUP_SPAWN_MIN, POWERUP_SPAWN_MAX)
 
-        return self._check_collisions(powerups, balls, next_id)
+        return self._check_collisions(powerups, balls, next_id, bus)
 
     def queue_snapshot(self) -> List[str]:
         return self._queue[:]
@@ -88,6 +95,7 @@ class PowerUpManager:
         powerups: List[PowerUp],
         balls:    List[Ball],
         next_id:  Callable[[], int],
+        bus:      "EventBus",
     ) -> List[tuple[str, int | None]]:
         collected: List[tuple[str, int | None]] = []
         hit: set[int] = set()
@@ -99,8 +107,11 @@ class PowerUpManager:
                 dx = ball.x - pu.x
                 dy = ball.y - pu.y
                 if math.sqrt(dx * dx + dy * dy) < BALL_R + POWERUP_RADIUS:
-                    collected.append((pu.type, ball.last_touch))
-                    self._apply_to_ball(ball, pu, balls, next_id)
+                    collector = ball.last_touch
+                    collected.append((pu.type, collector))
+                    effect = PowerUpEffectFactory.create(pu.type)
+                    effect.apply_to_ball(ball, balls, next_id)
+                    effect.apply_to_room(bus, collector)
                     hit.add(id(pu))
 
         for pu in list(powerups):
@@ -108,43 +119,3 @@ class PowerUpManager:
                 powerups.remove(pu)
 
         return collected
-
-    def _apply_to_ball(
-        self,
-        ball:    Ball,
-        pu:      PowerUp,
-        balls:   List[Ball],
-        next_id: Callable[[], int],
-    ) -> None:
-        """Apply ball-level effect. Room-level effects are left for the Room."""
-
-        if pu.type == "double":
-            if len(balls) < MAX_BALLS:
-                angle = math.atan2(ball.vy, ball.vx) + math.pi + random.uniform(-0.5, 0.5)
-                spd   = ball.speed
-                balls.append(Ball(
-                    id=next_id(),
-                    x=ball.x, y=ball.y,
-                    vx=math.cos(angle) * spd,
-                    vy=math.sin(angle) * spd,
-                ))
-
-        elif pu.type == "speed":
-            spd = ball.speed
-            if spd > 0:
-                new_spd = min(spd * SPEED_BOOST_FACTOR, BALL_SPEED_MAX * SPEED_BOOST_FACTOR)
-                ball.vx = ball.vx / spd * new_spd
-                ball.vy = ball.vy / spd * new_spd
-            ball.boosted     = True
-            ball.boost_timer = SPEED_BOOST_DURATION
-
-        elif pu.type == "snitch":
-            ball.snitched     = True
-            ball.snitch_timer = SNITCH_DURATION
-            # Dart away in a random direction at moderate speed
-            angle = random.uniform(0, math.pi * 2)
-            spd   = max(ball.speed, BALL_SPEED_MAX * 0.55)
-            ball.vx = math.cos(angle) * spd
-            ball.vy = math.sin(angle) * spd
-
-        # "movinggoal" has no ball-level effect; Room reacts to it via collected list.

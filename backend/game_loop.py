@@ -50,11 +50,13 @@ async def game_loop(room: Room) -> None:
             if room.state == "playing":
                 scored, scorer, collected = room.tick()
 
-                if scored is not None and not room.eliminated[scored]:
-                    done = await _handle_goal(room, scored, scorer)
-                    if done:
-                        return
-                    continue  # timing reset handled inside _handle_goal
+                if scored is not None:
+                    p = room.players.get(scored)
+                    if p is not None and not p.eliminated:
+                        done = await _handle_goal(room, scored, scorer)
+                        if done:
+                            return
+                        continue  # timing reset handled inside _handle_goal
 
                 await room.broadcast(room.state_snapshot(collected))
 
@@ -77,14 +79,18 @@ async def _handle_goal(room: Room, scored: int, scorer: int | None) -> bool:
     Must be called while holding room.lock.
     scorer is the player slot who last touched the ball (may be None).
     """
-    room.lives[scored] -= 1
-    eliminated_now = room.lives[scored] <= 0
+    scored_player = room.players.get(scored)
+    if scored_player is None:
+        return False
+
+    scored_player.lives -= 1
+    eliminated_now = scored_player.lives <= 0
     if eliminated_now:
-        room.eliminated[scored] = True
+        scored_player.eliminated = True
 
     # Award goal to scorer — no own goals
     if scorer is not None and scorer != scored and scorer in room.players:
-        room.goals_scored[scorer] += 1
+        room.players[scorer].goals_scored += 1
 
     alive     = room.alive_slots()
     game_over = len(alive) <= 1
@@ -94,13 +100,13 @@ async def _handle_goal(room: Room, scored: int, scorer: int | None) -> bool:
         "type":           "goal",
         "player":         scored,
         "scorer":         scorer,
-        "lives":          room.lives[:],
-        "eliminated":     room.eliminated[:],
+        "lives":          room.lives,
+        "eliminated":     room.eliminated,
         "eliminated_now": eliminated_now,
         "game_over":      game_over,
         "winner":         alive[0] if game_over and alive else -1,
         "names":          [room.names.get(i, "") for i in range(room.n_sides)],
-        "goals_scored":   room.goals_scored[:],
+        "goals_scored":   room.goals_scored,
         "life_gained":    False,
     })
 
@@ -159,7 +165,6 @@ async def _run_kickoff_phase(room: Room, scorer: int | None) -> float | None:
     try:
         await asyncio.wait_for(room.kickoff_event.wait(), timeout=_KICKOFF_TIMEOUT)
     except asyncio.TimeoutError:
-        # Use the angle the arrow is pointing at when time runs out
         elapsed = time.monotonic() - kickoff_start
         room.kickoff_angle = elapsed * _KICKOFF_ROT_SPEED
 
@@ -170,27 +175,26 @@ async def _run_kickoff_phase(room: Room, scorer: int | None) -> float | None:
 
 async def _run_upgrade_phase(room: Room) -> None:
     """Show upgrade cards to all players and wait for picks (or timeout)."""
-    room.upgrade_picks = {}
-    room.upgrade_all_done = asyncio.Event()
+    all_done = room.begin_upgrade_phase()
     room.state = "upgrade"
 
     await room.broadcast({
         "type":         "upgrade_pick",
         "cards":        _UPGRADE_CARDS,
-        "goals_scored": room.goals_scored[:],
+        "goals_scored": room.goals_scored,
         "timeout":      int(_UPGRADE_TIMEOUT),
     })
 
     try:
-        await asyncio.wait_for(room.upgrade_all_done.wait(), timeout=_UPGRADE_TIMEOUT)
+        await asyncio.wait_for(all_done.wait(), timeout=_UPGRADE_TIMEOUT)
     except asyncio.TimeoutError:
         pass
 
     # Notify clients of applied upgrades so they can update display
     await room.broadcast({
         "type":            "upgrade_result",
-        "goals_scored":    room.goals_scored[:],
-        "lives":           room.lives[:],
-        "paddle_len_mult": room.paddle_len_mult[:],
-        "speed_mult":      room.speed_mult[:],
+        "goals_scored":    room.goals_scored,
+        "lives":           room.lives,
+        "paddle_len_mult": room.paddle_len_mult,
+        "speed_mult":      room.speed_mult,
     })

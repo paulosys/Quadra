@@ -1,0 +1,395 @@
+@startuml quadra_class_diagram
+
+allowmixing
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #333
+}
+skinparam package {
+  BorderColor #888
+  FontStyle bold
+}
+
+' ════════════════════════════════════════════════════════════
+'  MODELS
+' ════════════════════════════════════════════════════════════
+package "models" #FAFAFA {
+
+  enum Side {
+    TOP = 0
+    BOTTOM = 1
+    LEFT = 2
+    RIGHT = 3
+    SIDE4..SIDE7
+  }
+
+  class Ball {
+    + id : int
+    + x, y : float
+    + vx, vy : float
+    + boosted : bool
+    + boost_timer : float
+    + snitched : bool
+    + snitch_timer : float
+    + portal_cooldown : float
+    + last_touch : int | None
+    --
+    + speed : float
+    + apply_boost(factor, duration)
+    + apply_snitch(duration)
+    + tick_timers(dt)
+    + tick_snitch_movement()
+    + normalize_to(max_speed)
+    + to_dict() : dict
+  }
+
+  class Player {
+    + slot : int
+    + name : str
+    + ws : WebSocketServerProtocol
+    + lives : int
+    + eliminated : bool
+    + goals_scored : int
+    + paddle_pos : float
+    + paddle_len_mult : float
+    + speed_mult : float
+    --
+    + is_alive() : bool
+    + is_connected() : bool
+    + to_dict() : dict
+  }
+
+  class PowerUp {
+    + id : int
+    + x, y : float
+    + type : str
+    --
+    + to_dict() : dict
+  }
+
+  class Portal {
+    + id : int
+    + x, y : float
+    + pair_id : int
+    + rotation : float
+    --
+    + to_dict() : dict
+  }
+
+  class CornerPowerUp {
+    + corner : int
+    + type : str
+    --
+    + to_dict() : dict
+  }
+}
+
+' ════════════════════════════════════════════════════════════
+'  EVENTS  (Observer pattern)
+' ════════════════════════════════════════════════════════════
+package "events" #FFF8E7 {
+
+  enum GameEvent {
+    GOAL_SCORED
+    PLAYER_ELIMINATED
+    POWERUP_COLLECTED
+    ROUND_START
+    GAME_OVER
+  }
+
+  class EventBus {
+    - _listeners : dict[GameEvent, list[Callable]]
+    --
+    + subscribe(event, callback)
+    + publish(event, **kwargs)
+  }
+
+  EventBus ..> GameEvent : uses
+}
+
+' ════════════════════════════════════════════════════════════
+'  PHYSICS
+' ════════════════════════════════════════════════════════════
+package "physics" #F0F4FF {
+
+  class WallDef {
+    + nx, ny : float
+    + tx, ty : float
+    + mx, my : float
+    + half_len : float
+  }
+
+  class PhysicsEngine {
+    + tick_ball(ball, paddles, eliminated,\n  players, goal_offsets,\n  paddle_len_mults, wall_defs) : Side | None
+    - _check_side(ball, side, ...) : Side | None
+    - _check_wall(ball, wall_idx, wd, ...) : int | None
+    - {static} _in_goal(pos, half, offset) : bool
+  }
+
+  note bottom of PhysicsEngine
+    Stateless — all state
+    passed as parameters
+  end note
+}
+
+' ════════════════════════════════════════════════════════════
+'  POWERUPS
+' ════════════════════════════════════════════════════════════
+package "powerups" #F5FFF5 {
+
+  class PowerUpManager {
+    + spawn_timer : float
+    - _queue : list[str]
+    --
+    + reset()
+    + tick(powerups, balls, next_id, bus) : list[tuple]
+    + queue_snapshot() : list[str]
+    - _spawn(powerups, next_id)
+    - _check_collisions(...) : list[tuple]
+    - _next_from_queue() : str
+    - _refill_queue()
+  }
+
+  ' ── Strategy + Factory ──────────────────────────────────
+  package "effects" #E8FFE8 {
+
+    abstract class PowerUpEffect <<Strategy>> {
+      + {abstract} apply_to_ball(ball, balls, next_id)
+      + {abstract} apply_to_room(bus, collector)
+    }
+
+    class DoubleEffect {
+      + apply_to_ball(...)
+      + apply_to_room(...)
+    }
+    class SpeedEffect {
+      + apply_to_ball(...)
+      + apply_to_room(...)
+    }
+    class SnitchEffect {
+      + apply_to_ball(...)
+      + apply_to_room(...)
+    }
+    class MovingGoalEffect {
+      + apply_to_ball(...)
+      + apply_to_room(...)
+    }
+    class PortalEffect {
+      + apply_to_ball(...)
+      + apply_to_room(...)
+    }
+    class HurricaneEffect {
+      + apply_to_ball(...)
+      + apply_to_room(...)
+    }
+    class GhostGoalEffect {
+      + apply_to_ball(...)
+      + apply_to_room(...)
+    }
+
+    class PowerUpEffectFactory <<Factory>> {
+      - {static} _registry : dict[str, type[PowerUpEffect]]
+      --
+      + {static} create(ptype) : PowerUpEffect
+      + {static} register(ptype, klass)
+    }
+
+    PowerUpEffect <|-- DoubleEffect
+    PowerUpEffect <|-- SpeedEffect
+    PowerUpEffect <|-- SnitchEffect
+    PowerUpEffect <|-- MovingGoalEffect
+    PowerUpEffect <|-- PortalEffect
+    PowerUpEffect <|-- HurricaneEffect
+    PowerUpEffect <|-- GhostGoalEffect
+
+    PowerUpEffectFactory ..> PowerUpEffect : <<creates>>
+  }
+
+  PowerUpManager ..> PowerUpEffectFactory : uses
+}
+
+' ════════════════════════════════════════════════════════════
+'  MANAGERS
+' ════════════════════════════════════════════════════════════
+package "managers" #FFF0F5 {
+
+  class HurricaneManager {
+    - _timer : float
+    --
+    + is_active : bool
+    + activate()
+    + reset()
+    + tick(dt, balls)
+  }
+
+  class MovingGoalManager {
+    + goal_offsets : list[float]
+    - _global_timer : float
+    - _global_move_time : float
+    - _slot_timers : list[float]
+    - _corner_move_time : float
+    --
+    + is_active : bool
+    + slot_goals_active : list[bool]
+    + activate_global()
+    + activate_slot(slot, duration)
+    + reset(n_sides)
+    + tick(dt, n_sides)
+  }
+
+  class PortalManager {
+    + portals : list[Portal]
+    - _timer : float
+    - _pending_teleports : dict
+    - _next_id : Callable
+    --
+    + pending_teleport_ids : set[int]
+    + activate()
+    + reset()
+    + tick(dt, balls)
+    - _create_portals()
+  }
+
+  class CornerManager {
+    + corner_powerups : list[CornerPowerUp | None]
+    - _charge : list[float]
+    - _spawn_timer : float
+    --
+    + reset()
+    + snapshot() : list
+    + tick(dt, n_sides, players)
+    - _both_owners_near(corner, players) : bool
+    - _activate_corner_power(corner, ptype)
+  }
+
+  class UpgradeManager {
+    - _picks : dict[int, str | None]
+    - _all_done : asyncio.Event | None
+    - _alive_slots : list[int]
+    --
+    + begin_round(alive_slots) : asyncio.Event
+    + handle_pick(slot, card, player)
+    + reset()
+  }
+
+  CornerManager --> MovingGoalManager : delegates\ngoal activation
+  PortalManager "1" *-- "0..2" Portal
+  CornerManager "1" *-- "0..4" CornerPowerUp
+}
+
+' ════════════════════════════════════════════════════════════
+'  ROOM  (Facade)
+' ════════════════════════════════════════════════════════════
+class Room <<Facade>> {
+  + id : str
+  + state : str
+  + generation : int
+  + n_sides : int
+  + lock : asyncio.Lock
+  + task : asyncio.Task | None
+  + players : dict[int, Player]
+  + balls : list[Ball]
+  + powerups : list[PowerUp]
+  + debug_freeze_goals : bool
+  --
+  + num_players : int
+  + names : dict[int, str]
+  + lives : list[int]
+  + eliminated : list[bool]
+  + goals_scored : list[int]
+  + paddle_len_mult : list[float]
+  + speed_mult : list[float]
+  --
+  + next_slot() : int | None
+  + alive_slots() : list[int]
+  + set_n_sides(n)
+  + launch_ball(kick_angle)
+  + tick() : tuple
+  + reset_for_new_game()
+  + begin_upgrade_phase() : asyncio.Event
+  + handle_upgrade_pick(slot, card)
+  + handle_kick_direction(slot, angle)
+  + broadcast(msg)
+  + state_snapshot() : dict
+  - _on_powerup_collected(effect, collector)
+  - _ordered_players() : list[Player | None]
+  - _make_ball(...) : Ball
+}
+
+' ════════════════════════════════════════════════════════════
+'  ROOM REGISTRY
+' ════════════════════════════════════════════════════════════
+class RoomRegistry {
+  - _rooms : dict[str, Room]
+  --
+  + get_or_create(room_id) : Room
+  + delete(room_id)
+  + get(room_id) : Room | None
+  + count : int
+}
+
+' ════════════════════════════════════════════════════════════
+'  ENTRY POINTS  (no classes — represented as components)
+' ════════════════════════════════════════════════════════════
+component "ws_handler\n(handler, _join,\n_message_loop,\n_disconnect)" as WsHandler
+component "game_loop\n(game_loop, _run_countdown,\n_handle_goal, _run_upgrade_phase,\n_run_kickoff_phase)" as GameLoop
+
+' ════════════════════════════════════════════════════════════
+'  RELATIONSHIPS
+' ════════════════════════════════════════════════════════════
+
+' Room composition
+Room "1" *-- "0..*" Player       : players\ndict[int,Player]
+Room "1" *-- "0..*" Ball         : balls
+Room "1" *-- "0..*" PowerUp      : powerups
+Room "1" *-- "1"    HurricaneManager
+Room "1" *-- "1"    MovingGoalManager
+Room "1" *-- "1"    PortalManager
+Room "1" *-- "1"    CornerManager
+Room "1" *-- "1"    UpgradeManager
+Room "1" *-- "1"    PowerUpManager
+Room "1" *-- "1"    PhysicsEngine
+Room "1" *-- "1"    EventBus
+
+Room ..> WallDef : compute_walls()
+
+' Observer connections
+MovingGoalEffect ..> EventBus : publishes\nPOWERUP_COLLECTED
+PortalEffect     ..> EventBus : publishes\nPOWERUP_COLLECTED
+HurricaneEffect  ..> EventBus : publishes\nPOWERUP_COLLECTED
+GhostGoalEffect  ..> EventBus : publishes\nPOWERUP_COLLECTED
+
+EventBus ..> Room : notifies\n_on_powerup_collected
+
+' Upgrade + corner use Player
+UpgradeManager --> Player : mutates\nstats
+CornerManager  ..> Player : reads\npaddle_pos
+
+' Registry
+RoomRegistry "1" *-- "0..*" Room
+
+' Entry points
+WsHandler ..> Room        : join / move / kick
+WsHandler ..> RoomRegistry : get_or_create
+GameLoop  ..> Room        : tick / broadcast
+GameLoop  ..> Room        : state transitions
+
+' ════════════════════════════════════════════════════════════
+'  DESIGN PATTERN NOTES
+' ════════════════════════════════════════════════════════════
+note as N1
+  <b>Design Patterns</b>
+  ──────────────────────
+  <b>Facade</b>       Room over 5 managers
+  <b>Strategy</b>     PowerUpEffect subclasses
+  <b>Factory</b>      PowerUpEffectFactory
+  <b>Observer</b>     EventBus + GameEvent
+  <b>Value Object</b> Player (replaces 6 arrays)
+end note
+
+@enduml

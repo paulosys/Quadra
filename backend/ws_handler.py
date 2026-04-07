@@ -17,7 +17,7 @@ import websockets
 from websockets.server import WebSocketServerProtocol
 
 from game_loop import game_loop
-from models import SIDE_NAMES
+from models import Player, SIDE_NAMES
 from room import Room
 from room_registry import registry
 
@@ -71,8 +71,7 @@ async def _join(ws: WebSocketServerProtocol) -> tuple[Optional[Room], Optional[i
             await ws.send(json.dumps({"type": "error", "msg": "Room full"}))
             return None, None, None
 
-        room.players[slot] = ws
-        room.names[slot]   = name
+        room.players[slot] = Player(slot=slot, name=name, ws=ws)
         generation         = room.generation
         log.info(f"[{room_id}] '{name}' joined slot {slot} ({SIDE_NAMES[slot]}) gen={generation}")
 
@@ -106,7 +105,8 @@ async def _message_loop(ws: WebSocketServerProtocol, room: Room, slot: int) -> N
             pos = msg.get("pos")
             if pos is not None:
                 async with room.lock:
-                    room.paddles[slot] = max(0.0, min(1.0, float(pos)))
+                    if slot in room.players:
+                        room.players[slot].paddle_pos = max(0.0, min(1.0, float(pos)))
 
         elif t == "start_game":
             async with room.lock:
@@ -133,8 +133,6 @@ async def _disconnect(room: Optional[Room], slot: Optional[int], generation: Opt
     if room is None or slot is None or generation is None:
         return
     async with room.lock:
-        # If the room was reset after this connection joined, skip cleanup —
-        # the slot was already cleared and the new game should not be disturbed.
         if room.generation != generation:
             log.info(f"[{room.id}] Slot {slot} stale disconnect (gen {generation} != {room.generation}), ignored")
             return
