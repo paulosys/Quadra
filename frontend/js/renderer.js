@@ -50,6 +50,7 @@ export function draw() {
     _drawField(fL, fT, fR, fB, fW, fH, S);
     _drawFieldBorder(fL, fT, fW, fH);
     _eraseGoalBorders(st, S, fT, fB, fL, fR, gwH, gwV, go);
+    _drawPlayerLabels4(st, S, fT, fB, fL, fR, gd, gwH, gwV, go);
 
     if (st.hurricane_active) _drawHurricane(S, Date.now());
     for (const pu of (st.powerups || [])) _drawPowerup(pu, S);
@@ -64,6 +65,7 @@ export function draw() {
     _drawFieldPoly(walls, S);
     _drawFieldBorderPoly(walls, S);
     _eraseGoalBordersPoly(walls, st, S, go);
+    _drawPlayerLabelsPoly(walls, st, S, go);
 
     if (st.hurricane_active) _drawHurricane(S, Date.now());
     for (const pu of (st.powerups || [])) _drawPowerup(pu, S);
@@ -653,6 +655,60 @@ function _drawKickoff(S, st) {
   ctx.fillText(`${Math.ceil(timeLeft)}s`, cx, cy + r + 10);
 
   ctx.restore();
+}
+
+// ── Player labels on goal pockets ────────────────────────────────────────────
+
+function _drawGoalLabel(st, slot, cx, cy, rotation, S) {
+  const name    = st.names[slot] || '';
+  const lives   = st.lives[slot] || 0;
+  const goals   = st.goals_scored[slot] || 0;
+  const isMe    = state.mySlot === slot;
+  const isElim  = st.eliminated[slot];
+
+  const nameSz  = Math.floor(S * 0.026);
+  const statSz  = Math.floor(S * 0.021);
+  const gap     = Math.floor(nameSz * 0.25);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (rotation) ctx.rotate(rotation);
+  ctx.textAlign    = 'center';
+  ctx.shadowColor  = 'rgba(0,0,0,0.9)';
+  ctx.shadowBlur   = 5;
+
+  ctx.font         = `bold ${nameSz}px 'Bebas Neue', sans-serif`;
+  ctx.fillStyle    = isElim ? '#666' : (isMe ? '#ffee55' : '#ffffff');
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(name, 0, gap);
+
+  const hearts = '♥'.repeat(lives);
+  ctx.font         = `${statSz}px 'Bebas Neue', sans-serif`;
+  ctx.fillStyle    = isElim ? '#555' : '#ff8080';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`${hearts}  ⚽${goals}`, 0, gap);
+
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function _drawPlayerLabels4(st, S, fT, fB, fL, fR, gd, gwH, gwV, go) {
+  if (st.names[0] && !st.eliminated[0]) _drawGoalLabel(st, 0, S*(0.5+go[0]),        fT - gd/2,          0,             S);
+  if (st.names[1] && !st.eliminated[1]) _drawGoalLabel(st, 1, S*(0.5+go[1]),        fB + gd/2,          0,             S);
+  if (st.names[2] && !st.eliminated[2]) _drawGoalLabel(st, 2, fL - gd/2,            S*(0.5+go[2]),      -Math.PI / 2,  S);
+  if (st.names[3] && !st.eliminated[3]) _drawGoalLabel(st, 3, fR + gd/2,            S*(0.5+go[3]),       Math.PI / 2,  S);
+}
+
+function _drawPlayerLabelsPoly(walls, st, S, go) {
+  const gd = GOAL_DEPTH * S;
+  for (let i = 0; i < walls.length; i++) {
+    if (!st.names[i] || st.eliminated[i]) continue;
+    const wd   = walls[i];
+    const goff = (go[i] || 0) * S;
+    const cx   = wd.mx + wd.nx * (gd + 4) / 2 + wd.tx * goff;
+    const cy   = wd.my + wd.ny * (gd + 4) / 2 + wd.ty * goff;
+    _drawGoalLabel(st, i, cx, cy, 0, S);
+  }
 }
 
 function _rrPath(x, y, w, h, r) {

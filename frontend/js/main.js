@@ -6,7 +6,7 @@
 import { connect, send, reconnect } from './network.js';
 import { setupInputListeners, inputTick } from './input.js';
 import { draw, resize } from './renderer.js';
-import { showOverlay, hideScores } from './ui.js';
+import { showOverlay } from './ui.js';
 import { unlockAudio, tickHurricaneAmbient } from './audio.js';
 import { state } from './state.js';
 import { clearParticles } from './particles.js';
@@ -66,7 +66,6 @@ document.getElementById('btnLeave').addEventListener('click', () => {
   state.mySlot = -1;
   state.myRoom = '';
   showOverlay('ovConnect');
-  hideScores();
   reconnect();
 });
 

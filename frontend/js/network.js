@@ -7,9 +7,8 @@ import { state } from './state.js';
 import { playBounce, playGoal, playPowerupCollect, playEliminated } from './audio.js';
 import {
   showOverlay, hideAllOverlays,
-  showWaiting, updateScoreUI, updatePowerupQueue, updateSpawnTimer,
+  showWaiting, updatePowerupQueue, updateSpawnTimer,
   showUpgradeCards, hideUpgradeCards,
-  showScores, hideScores,
 } from './ui.js';
 
 let _ws = null;
@@ -62,14 +61,12 @@ function _handleMessage(msg) {
       state.myRoom       = msg.room;
       state.server.names = msg.names;
       showWaiting(msg.players);
-      showScores();
       break;
 
     case 'player_joined':
     case 'player_left':
       state.server.names = msg.names;
       if (state.gameState === 'waiting') showWaiting(msg.players);
-      updateScoreUI();
       break;
 
     case 'countdown':
@@ -120,7 +117,6 @@ function _handleMessage(msg) {
       s.paddle_len_mult     = msg.paddle_len_mult        || new Array(s.numSides).fill(1);
       s.speed_mult          = msg.speed_mult             || new Array(s.numSides).fill(1);
       s.powerup_spawn_timer = msg.powerup_spawn_timer    ?? 0;
-      updateScoreUI();
       updatePowerupQueue(s.powerup_queue);
       updateSpawnTimer(s.powerup_spawn_timer);
       break;
@@ -132,7 +128,6 @@ function _handleMessage(msg) {
       s.eliminated    = msg.eliminated;
       s.names         = msg.names;
       s.goals_scored  = msg.goals_scored || [0, 0, 0, 0];
-      updateScoreUI();
       state.gameState = 'goal';
 
       if (msg.eliminated_now) playEliminated(); else playGoal();
@@ -171,7 +166,6 @@ function _handleMessage(msg) {
       s.lives           = msg.lives;
       s.paddle_len_mult = msg.paddle_len_mult;
       s.speed_mult      = msg.speed_mult;
-      updateScoreUI();
       break;
     }
 

@@ -35,34 +35,8 @@ export function showWaiting(activePlayers) {
     div.innerHTML = `<span class="dot"></span><span>${SIDE_LABELS[i] || `Slot ${i + 1}`}: ${name}</span>`;
     wp.appendChild(div);
   }
-  updateScoreUI();
 }
 
-export function updateScoreUI() {
-  const n = state.server.numSides || 4;
-  for (let i = 0; i < 8; i++) {
-    const el = document.getElementById('sc' + i);
-    if (!el) continue;
-    if (i < n) {
-      const name   = state.server.names[i] || '—';
-      const hearts = state.server.lives[i] > 0
-        ? ('♥ ').repeat(state.server.lives[i]).trim()
-        : '✕';
-      const goals  = state.server.goals_scored?.[i] ?? 0;
-      document.getElementById('sn' + i).textContent = name;
-      document.getElementById('sl' + i).textContent = hearts;
-      document.getElementById('sg' + i).textContent = goals > 0 ? `⚽ ${goals}` : '';
-      el.classList.toggle('me',   i === state.mySlot);
-      el.classList.toggle('elim', state.server.eliminated[i]);
-      el.style.display = '';
-    } else {
-      el.style.display = 'none';
-    }
-  }
-}
-
-export function showScores()  { document.getElementById('scores').style.display = ''; }
-export function hideScores()  { document.getElementById('scores').style.display = 'none'; }
 
 // ── Upgrade cards ──────────────────────────────────────────────────────────
 
