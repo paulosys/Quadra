@@ -468,16 +468,26 @@ function _drawPowerup(pu, S) {
 
 function _drawPadH(cx, cy, len, thick, elim, isMe) {
   const x = cx - len / 2, y = cy - thick / 2;
+  if (isMe && !elim) {
+    ctx.save();
+    ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 14;
+  }
   ctx.fillStyle = elim ? '#181818' : '#7a2030'; _rrFill(x-4, y-2, len+8, thick+4, 6);
-  ctx.fillStyle = elim ? '#2a2a2a' : isMe ? '#4a90d9' : '#2a6db5'; _rrFill(x, y, len, thick, 5);
-  if (!elim) { ctx.fillStyle = 'rgba(255,255,255,.18)'; _rrFill(x+4, y+2, len-8, thick*0.35, 2); }
+  ctx.fillStyle = elim ? '#2a2a2a' : isMe ? '#00c8ff' : '#2a6db5'; _rrFill(x, y, len, thick, 5);
+  if (isMe && !elim) ctx.restore();
+  if (!elim) { ctx.fillStyle = 'rgba(255,255,255,.25)'; _rrFill(x+4, y+2, len-8, thick*0.35, 2); }
 }
 
 function _drawPadV(cx, cy, thick, len, elim, isMe) {
   const x = cx - thick / 2, y = cy - len / 2;
+  if (isMe && !elim) {
+    ctx.save();
+    ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 14;
+  }
   ctx.fillStyle = elim ? '#181818' : '#7a2030'; _rrFill(x-2, y-4, thick+4, len+8, 6);
-  ctx.fillStyle = elim ? '#2a2a2a' : isMe ? '#4a90d9' : '#2a6db5'; _rrFill(x, y, thick, len, 5);
-  if (!elim) { ctx.fillStyle = 'rgba(255,255,255,.18)'; _rrFill(x+2, y+4, thick*0.35, len-8, 2); }
+  ctx.fillStyle = elim ? '#2a2a2a' : isMe ? '#00c8ff' : '#2a6db5'; _rrFill(x, y, thick, len, 5);
+  if (isMe && !elim) ctx.restore();
+  if (!elim) { ctx.fillStyle = 'rgba(255,255,255,.25)'; _rrFill(x+2, y+4, thick*0.35, len-8, 2); }
 }
 
 function _drawCornerPowerups(st, S, fm) {
@@ -755,12 +765,15 @@ function _drawPaddlesPoly(walls, st, pt, S) {
     // local +x = outward normal, local +y = tangent
     ctx.translate(0, padTang);
     // Paddle occupies from x=-pt (into field) to x=0 (at wall face), y=±pw/2
+    const isMe = state.mySlot === i;
+    if (isMe && !st.eliminated[i]) { ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 14; }
     ctx.fillStyle = st.eliminated[i] ? '#181818' : '#7a2030';
     _rrFill(-pt - 4, -pw / 2 - 2, pt + 8, pw + 4, 6);
-    ctx.fillStyle = st.eliminated[i] ? '#2a2a2a' : (state.mySlot === i ? '#4a90d9' : '#2a6db5');
+    ctx.fillStyle = st.eliminated[i] ? '#2a2a2a' : (isMe ? '#00c8ff' : '#2a6db5');
     _rrFill(-pt, -pw / 2, pt, pw, 5);
+    if (isMe && !st.eliminated[i]) { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
     if (!st.eliminated[i]) {
-      ctx.fillStyle = 'rgba(255,255,255,.18)';
+      ctx.fillStyle = 'rgba(255,255,255,.25)';
       _rrFill(-pt + 2, -pw / 2 + 4, pt * 0.35, pw - 8, 2);
     }
     ctx.restore();
