@@ -12,7 +12,7 @@ FIELD_MARGIN: float = float(os.getenv("FIELD_MARGIN", 0.08))
 PADDLE_THICK: float = float(os.getenv("PADDLE_THICK", 0.03))
 PADDLE_LEN_H: float = float(os.getenv("PADDLE_LEN_H", 0.16))
 PADDLE_LEN_V: float = float(os.getenv("PADDLE_LEN_V", 0.16))
-PADDLE_SPEED: float = float(os.getenv("PADDLE_SPEED", 0.007))
+PADDLE_SPEED: float = float(os.getenv("PADDLE_SPEED", 0.004))
 
 # ── Ball ───────────────────────────────────────────────────────────────────────
 BALL_R:          float = float(os.getenv("BALL_R",          0.022))

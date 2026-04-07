@@ -22,9 +22,10 @@ _UPGRADE_CARDS = [
     {"id": "paddle", "cost_goals": 2, "label": "+5% Barra",  "desc": "Aumenta 5% a barra do goleiro"},
     {"id": "speed",  "cost_goals": 2, "label": "+10% Veloc.", "desc": "Aumenta 10% a velocidade"},
 ]
-_UPGRADE_TIMEOUT  = 10.0  # seconds each player has to pick
+_UPGRADE_TIMEOUT  = 7.0   # seconds each player has to pick
 _GOAL_FLASH_PAUSE = 1.5   # brief pause for the goal flash before upgrade screen
 _KICKOFF_TIMEOUT  = 5.0   # seconds scorer has to aim and kick
+_KICKOFF_ROT_SPEED = 1.8  # rad/s — must match frontend js/network.js rotSpeed
 
 
 async def game_loop(room: Room) -> None:
@@ -118,9 +119,10 @@ async def _handle_goal(room: Room, scored: int, scorer: int | None) -> bool:
         if room.num_players == 0:
             return True
 
-        await _run_countdown(room)
-
         kickoff_scorer = scorer if (scorer is not None and scorer != scored) else None
+        if kickoff_scorer is None:
+            await _run_countdown(room)
+
         kick_angle = await _run_kickoff_phase(room, kickoff_scorer)
         if room.num_players == 0:
             return True
@@ -153,14 +155,17 @@ async def _run_kickoff_phase(room: Room, scorer: int | None) -> float | None:
         "timeout": _KICKOFF_TIMEOUT,
     })
 
+    kickoff_start = time.monotonic()
     try:
         await asyncio.wait_for(room.kickoff_event.wait(), timeout=_KICKOFF_TIMEOUT)
     except asyncio.TimeoutError:
-        pass
+        # Use the angle the arrow is pointing at when time runs out
+        elapsed = time.monotonic() - kickoff_start
+        room.kickoff_angle = elapsed * _KICKOFF_ROT_SPEED
 
     room.kickoff_event  = None
     room.kickoff_scorer = None
-    return room.kickoff_angle  # None → caller uses random
+    return room.kickoff_angle
 
 
 async def _run_upgrade_phase(room: Room) -> None:

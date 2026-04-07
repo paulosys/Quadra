@@ -9,6 +9,7 @@ import {
   showOverlay, hideAllOverlays,
   showWaiting, updateScoreUI, updatePowerupQueue, updateSpawnTimer,
   showUpgradeCards, hideUpgradeCards,
+  showScores, hideScores,
 } from './ui.js';
 
 let _ws = null;
@@ -31,6 +32,7 @@ export function connect(joinMsg) {
     statusEl.className   = 'conn-status err';
     document.getElementById('ovConnect').style.display = 'flex';
     document.getElementById('ovWaiting').style.display = 'none';
+    hideScores();
   });
 
   _ws.addEventListener('error', () => {
@@ -60,6 +62,7 @@ function _handleMessage(msg) {
       state.myRoom       = msg.room;
       state.server.names = msg.names;
       showWaiting(msg.players);
+      showScores();
       break;
 
     case 'player_joined':

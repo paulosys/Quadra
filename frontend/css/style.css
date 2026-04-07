@@ -44,48 +44,28 @@ h1 {
 .scores {
   display: grid;
   grid-template-columns: repeat(4,1fr);
-  gap: 6px;
+  gap: 5px;
   width: 100%;
   max-width: 680px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .sc {
   background: #111;
   border: 1px solid #1e1e1e;
-  border-radius: 6px;
-  padding: 7px 4px;
-  text-align: center;
+  border-radius: 5px;
+  padding: 4px 7px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   transition: border-color .2s, opacity .3s;
+  min-width: 0;
 }
 .sc.me { border-color: var(--accent); }
 .sc.elim { opacity: .28; }
-.sc .sc-label { font-size:.5rem; color:var(--muted); letter-spacing:.2em; text-transform:uppercase; margin-bottom:1px; }
-.sc .sc-name  { font-size:.68rem; font-weight:700; color:var(--accent); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sc .sc-lives { font-size:1rem; color:#e05c70; letter-spacing:.08em; }
-.sc .sc-goals { font-size:.55rem; color:var(--muted); margin-top:2px; min-height:.7rem; }
+.sc .sc-name  { font-size:.6rem; font-weight:700; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+.sc .sc-lives { font-size:.72rem; color:#e05c70; letter-spacing:.04em; white-space:nowrap; flex-shrink:0; }
+.sc .sc-goals { font-size:.5rem; color:var(--muted); white-space:nowrap; flex-shrink:0; }
 
-/* ── Controls hint ── */
-.hints {
-  display: grid;
-  grid-template-columns: repeat(4,1fr);
-  gap: 6px;
-  width: 100%;
-  max-width: 680px;
-  margin-bottom: 10px;
-}
-.hint {
-  background: #0c0c0c;
-  border: 1px solid #181818;
-  border-radius: 4px;
-  padding: 5px 3px;
-  text-align: center;
-  font-size: .5rem;
-  color: #3a3a3a;
-  letter-spacing: .05em;
-}
-.hint.me { color: #888; border-color: #333; }
-.hint span { display:block; font-weight:700; color:#555; margin-bottom:1px; }
-.hint.me span { color: var(--accent); }
 
 /* ── Arena ── */
 #arena {

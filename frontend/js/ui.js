@@ -55,15 +55,14 @@ export function updateScoreUI() {
       el.classList.toggle('me',   i === state.mySlot);
       el.classList.toggle('elim', state.server.eliminated[i]);
       el.style.display = '';
-      const h = document.getElementById('h' + i);
-      if (h) { h.classList.toggle('me', i === state.mySlot); h.style.display = ''; }
     } else {
       el.style.display = 'none';
-      const h = document.getElementById('h' + i);
-      if (h) h.style.display = 'none';
     }
   }
 }
+
+export function showScores()  { document.getElementById('scores').style.display = ''; }
+export function hideScores()  { document.getElementById('scores').style.display = 'none'; }
 
 // ── Upgrade cards ──────────────────────────────────────────────────────────
 
