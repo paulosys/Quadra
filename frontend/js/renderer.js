@@ -693,20 +693,22 @@ function _drawGoalLabel(st, slot, cx, cy, rotation, S) {
 }
 
 function _drawPlayerLabels4(st, S, fT, fB, fL, fR, gd, gwH, gwV, go) {
-  if (st.names[0] && !st.eliminated[0]) _drawGoalLabel(st, 0, S*(0.5+go[0]),        fT - gd/2,          0,             S);
-  if (st.names[1] && !st.eliminated[1]) _drawGoalLabel(st, 1, S*(0.5+go[1]),        fB + gd/2,          0,             S);
-  if (st.names[2] && !st.eliminated[2]) _drawGoalLabel(st, 2, fL - gd/2,            S*(0.5+go[2]),      -Math.PI / 2,  S);
-  if (st.names[3] && !st.eliminated[3]) _drawGoalLabel(st, 3, fR + gd/2,            S*(0.5+go[3]),       Math.PI / 2,  S);
+  const lpad = S * 0.03;
+  if (st.names[0] && !st.eliminated[0]) _drawGoalLabel(st, 0, S*(0.5+go[0]),        fT - gd - lpad,     0,             S);
+  if (st.names[1] && !st.eliminated[1]) _drawGoalLabel(st, 1, S*(0.5+go[1]),        fB + gd + lpad,     0,             S);
+  if (st.names[2] && !st.eliminated[2]) _drawGoalLabel(st, 2, fL - gd - lpad,       S*(0.5+go[2]),      -Math.PI / 2,  S);
+  if (st.names[3] && !st.eliminated[3]) _drawGoalLabel(st, 3, fR + gd + lpad,       S*(0.5+go[3]),       Math.PI / 2,  S);
 }
 
 function _drawPlayerLabelsPoly(walls, st, S, go) {
-  const gd = GOAL_DEPTH * S;
+  const gd   = GOAL_DEPTH * S;
+  const lpad = S * 0.03;
   for (let i = 0; i < walls.length; i++) {
     if (!st.names[i] || st.eliminated[i]) continue;
     const wd   = walls[i];
     const goff = (go[i] || 0) * S;
-    const cx   = wd.mx + wd.nx * (gd + 4) / 2 + wd.tx * goff;
-    const cy   = wd.my + wd.ny * (gd + 4) / 2 + wd.ty * goff;
+    const cx   = wd.mx + wd.nx * (gd + lpad) + wd.tx * goff;
+    const cy   = wd.my + wd.ny * (gd + lpad) + wd.ty * goff;
     _drawGoalLabel(st, i, cx, cy, 0, S);
   }
 }

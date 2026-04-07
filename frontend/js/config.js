@@ -1,7 +1,7 @@
 // Game constants — must match backend/config.py
 export const WS_URL = `ws://${window.location.hostname}:8765`;
 
-export const FIELD_MARGIN    = 0.08;
+export const FIELD_MARGIN    = 0.13;
 export const PADDLE_THICK    = 0.03;
 export const PADDLE_LEN_H    = 0.16;
 export const PADDLE_LEN_V    = 0.16;

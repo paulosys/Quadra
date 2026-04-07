@@ -8,7 +8,7 @@ TICK_RATE: int   = int(os.getenv("TICK_RATE", 60))
 TICK_DT:   float = 1.0 / TICK_RATE
 
 # ── Arena ──────────────────────────────────────────────────────────────────────
-FIELD_MARGIN: float = float(os.getenv("FIELD_MARGIN", 0.08))
+FIELD_MARGIN: float = float(os.getenv("FIELD_MARGIN", 0.13))
 PADDLE_THICK: float = float(os.getenv("PADDLE_THICK", 0.03))
 PADDLE_LEN_H: float = float(os.getenv("PADDLE_LEN_H", 0.16))
 PADDLE_LEN_V: float = float(os.getenv("PADDLE_LEN_V", 0.16))
