@@ -41,7 +41,12 @@ h1 {
 }
 
 
-/* ── Arena ── */
+/* ── Arena + sidebar layout ── */
+#game-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 #arena {
   position: relative;
 }
@@ -59,26 +64,26 @@ canvas {
 /* ── Power-up Queue Bar ── */
 #pq-bar {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  max-width: 680px;
-  margin-top: 8px;
-  padding: 8px 14px;
+  gap: 8px;
+  padding: 10px 7px;
   background: #0c0c0c;
   border: 1px solid #1a1a1a;
   border-radius: 8px;
+  flex-shrink: 0;
 }
 .pq-title {
-  font-size: .46rem;
-  letter-spacing: .2em;
+  font-size: .38rem;
+  letter-spacing: .15em;
   color: var(--muted);
   text-transform: uppercase;
-  white-space: nowrap;
-  flex-shrink: 0;
+  text-align: center;
+  line-height: 1.6;
 }
 #pq-items {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   align-items: center;
 }
@@ -106,14 +111,12 @@ canvas {
 .pq-arrow {
   font-size: .6rem;
   color: #2a2a2a;
-  margin: 0 -2px;
 }
 #pq-timer {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  margin-left: auto;
   flex-shrink: 0;
 }
 #pq-timer-sec {
@@ -123,18 +126,21 @@ canvas {
   font-family: 'Bebas Neue', sans-serif;
 }
 #pq-timer-track {
-  width: 72px;
-  height: 5px;
+  width: 5px;
+  height: 56px;
   background: #1a1a1a;
   border-radius: 3px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 #pq-timer-fill {
-  height: 100%;
-  width: 0%;
+  width: 100%;
+  height: 0%;
   background: var(--accent);
   border-radius: 2px;
-  transition: width .12s linear;
+  transition: height .12s linear;
 }
 
 /* ── Overlays ── */

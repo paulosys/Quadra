@@ -124,5 +124,5 @@ export function updateSpawnTimer(timer) {
   if (!secEl || !fillEl) return;
   const pct = timer > 0 ? Math.max(0, Math.min(100, (1 - timer / SPAWN_MAX) * 100)) : 100;
   secEl.textContent  = timer > 0 ? `${Math.ceil(timer)}s` : '…';
-  fillEl.style.width = `${pct}%`;
+  fillEl.style.height = `${pct}%`;
 }
