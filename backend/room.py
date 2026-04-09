@@ -148,11 +148,20 @@ class Room:
         self.kickoff_angle = float(angle)
         self.kickoff_event.set()
 
-    def launch_ball(self, kick_angle: Optional[float] = None) -> None:
-        """Reset moveable state and spawn the first ball of a round."""
+    def clear_round_state(self) -> None:
+        """Wipe all transient round state so the frontend sees a clean field before countdown."""
         for p in self.players.values():
             p.paddle_pos = 0.5
+        self.balls    = []
+        self.powerups = []
+        self._powerup_mgr.reset()
+        self._goal_mgr.reset(self.n_sides)
+        self._portal_mgr.reset()
+        self._hurricane_mgr.reset()
+        self._corner_mgr.reset()
 
+    def launch_ball(self, kick_angle: Optional[float] = None) -> None:
+        """Spawn the ball for a new round. Call after clear_round_state()."""
         # Preserve mouse ball owner across rounds
         mouse_owner: Optional[int] = None
         if self.debug_mouse_ball_id is not None:

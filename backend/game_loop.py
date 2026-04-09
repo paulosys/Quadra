@@ -68,8 +68,10 @@ async def game_loop(room: Room) -> None:
 
 async def _run_countdown(room: Room) -> None:
     room.state = "countdown"
+    ordered = [room.players.get(i) for i in range(room.n_sides)]
+    paddles = [p.paddle_pos if p else 0.5 for p in ordered]
     for n in range(COUNTDOWN_SECS, 0, -1):
-        await room.broadcast({"type": "countdown", "value": n})
+        await room.broadcast({"type": "countdown", "value": n, "paddles": paddles})
         await asyncio.sleep(1.0)
 
 
@@ -126,6 +128,8 @@ async def _handle_goal(room: Room, scored: int, scorer: int | None) -> bool:
             return True
 
         kickoff_scorer = scorer if (scorer is not None and scorer != scored) else None
+        room.clear_round_state()
+        await room.broadcast(room.state_snapshot())
         if kickoff_scorer is None:
             await _run_countdown(room)
 

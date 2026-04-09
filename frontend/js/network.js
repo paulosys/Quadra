@@ -73,11 +73,16 @@ function _handleMessage(msg) {
       hideUpgradeCards();
       showOverlay('ovCountdown');
       document.getElementById('cdText').textContent = msg.value;
+      if (state.gameState !== 'countdown') {
+        state.localPadPos = 0.5;
+        if (msg.paddles) state.server.paddles = msg.paddles;
+      }
       state.gameState = 'countdown';
       break;
 
     case 'kickoff':
       hideAllOverlays();
+      state.localPadPos = 0.5;
       state.kickoff = {
         scorer:    msg.scorer,
         startTime: Date.now(),
