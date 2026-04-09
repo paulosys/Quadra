@@ -55,7 +55,7 @@ export function draw() {
     if (st.hurricane_active) _drawHurricane(S, Date.now());
     for (const pu of (st.powerups || [])) _drawPowerup(pu, S);
     _drawPortals(st.portals || [], S);
-    _drawCornerPowerups(st, S, fm);
+    _drawCornerPowerups(st, 4, S, fm);
 
     _drawPaddles(st, pt, fT, fB, fL, fR, S);
   } else {
@@ -70,6 +70,7 @@ export function draw() {
     if (st.hurricane_active) _drawHurricane(S, Date.now());
     for (const pu of (st.powerups || [])) _drawPowerup(pu, S);
     _drawPortals(st.portals || [], S);
+    _drawCornerPowerups(st, n, S, FIELD_MARGIN);
 
     _drawPaddlesPoly(walls, st, pt, S);
   }
@@ -492,23 +493,33 @@ function _drawPadV(cx, cy, thick, len, elim, isMe) {
   if (!elim) { ctx.fillStyle = 'rgba(255,255,255,.25)'; _rrFill(x+2, y+4, thick*0.35, len-8, 2); }
 }
 
-function _drawCornerPowerups(st, S, fm) {
-  const cps = st.corner_powerups || [null, null, null, null];
-  // Corner centres (normalized): TL, TR, BL, BR — centred in the margin area
-  const cx = fm * 0.5, cy = fm * 0.5;
-  const CORNER_POS = [
-    { x: cx,     y: cy },
-    { x: 1 - cx, y: cy },
-    { x: cx,     y: 1 - cy },
-    { x: 1 - cx, y: 1 - cy },
-  ];
-  // Owner slot pairs per corner (must match backend _CORNER_DEFS)
-  const OWNER_COLORS = [
-    ['#4a90d9', '#4a90d9'],  // TL: slot 0 + slot 2
-    ['#4a90d9', '#4a90d9'],  // TR: slot 0 + slot 3
-    ['#4a90d9', '#4a90d9'],  // BL: slot 1 + slot 2
-    ['#4a90d9', '#4a90d9'],  // BR: slot 1 + slot 3
-  ];
+function _drawCornerPowerups(st, n, S, fm) {
+  const cps = st.corner_powerups;
+  if (!cps || !cps.length) return;
+
+  // Compute corner positions in normalised [0,1] coords.
+  // For n=4: place at the centre of each margin-area corner triangle.
+  // For n>4: use the polygon vertex (high end of wall c = low end of wall (c+1)%n).
+  let CORNER_POS;
+  if (n === 4) {
+    const cx = fm * 0.5, cy = fm * 0.5;
+    CORNER_POS = [
+      { x: cx,     y: cy },
+      { x: 1 - cx, y: cy },
+      { x: cx,     y: 1 - cy },
+      { x: 1 - cx, y: 1 - cy },
+    ];
+  } else {
+    const inradius = 0.5 - fm;
+    const halfLen  = inradius * Math.tan(Math.PI / n);
+    CORNER_POS = Array.from({ length: n }, (_, c) => {
+      const angle = -Math.PI / 2 + c * 2 * Math.PI / n;
+      const nx = Math.cos(angle), ny = Math.sin(angle);
+      const tx = -ny, ty = nx;
+      return { x: 0.5 + inradius * nx + halfLen * tx,
+               y: 0.5 + inradius * ny + halfLen * ty };
+    });
+  }
 
   const STYLES = {
     movinggoal: { stroke: '#b45fff', shadow: '#b45fff', label: '↔' },
@@ -517,7 +528,7 @@ function _drawCornerPowerups(st, S, fm) {
   const t  = Date.now();
   const r  = fm * 0.27 * S;
 
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < cps.length; i++) {
     const cp = cps[i];
     if (!cp) continue;
 

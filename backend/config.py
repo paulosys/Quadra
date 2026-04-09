@@ -67,7 +67,7 @@ HURRICANE_PULL:     float = float(os.getenv("HURRICANE_PULL",     0.004))  # cen
 CORNER_POWERUP_SPAWN_MIN: float = float(os.getenv("CORNER_POWERUP_SPAWN_MIN", 15.0))
 CORNER_POWERUP_SPAWN_MAX: float = float(os.getenv("CORNER_POWERUP_SPAWN_MAX", 25.0))
 CORNER_CHARGE_TIME:       float = float(os.getenv("CORNER_CHARGE_TIME",       0.3))
-CORNER_PROXIMITY:         float = float(os.getenv("CORNER_PROXIMITY",         0.10))
+CORNER_PROXIMITY:         float = float(os.getenv("CORNER_PROXIMITY",         0.18))
 CORNER_GOAL_DURATION:     float = float(os.getenv("CORNER_GOAL_DURATION",     9.0))
 
 # ── Network ────────────────────────────────────────────────────────────────────
