@@ -14,9 +14,9 @@ const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
 
 export function resize() {
-  const maxW = Math.min(window.innerWidth - 16, 700);
-  const maxH = window.innerHeight - 320;
-  const sz   = Math.min(maxW, maxH, 620);
+  const maxW = Math.min(window.innerWidth - 16, 900);
+  const maxH = window.innerHeight - 150;
+  const sz   = Math.min(maxW, maxH, 860);
   canvas.width  = sz;
   canvas.height = sz;
   document.getElementById('pq-bar').style.maxWidth = sz + 'px';
@@ -36,6 +36,14 @@ export function draw() {
 
   const pt  = PADDLE_THICK * S;
   const go  = st.goal_offsets || new Array(n).fill(0);
+
+  // Zoom out polygon arenas so vertices and corners have breathing room
+  if (n > 4) {
+    const zoom = 0.85;
+    ctx.save();
+    ctx.translate(S / 2 * (1 - zoom), S / 2 * (1 - zoom));
+    ctx.scale(zoom, zoom);
+  }
 
   if (n === 4) {
     const fm  = FIELD_MARGIN;
@@ -81,6 +89,8 @@ export function draw() {
   } else {
     _drawBalls(st, S);
   }
+
+  if (n > 4) ctx.restore();
 }
 
 // ── Private drawing helpers ────────────────────────────────────────────────────
@@ -510,7 +520,7 @@ function _drawCornerPowerups(st, n, S, fm) {
       { x: 1 - cx, y: 1 - cy },
     ];
   } else {
-    const inradius = 0.5 - fm;
+    const inradius = _polyInradius(n);
     const halfLen  = inradius * Math.tan(Math.PI / n);
     CORNER_POS = Array.from({ length: n }, (_, c) => {
       const angle = -Math.PI / 2 + c * 2 * Math.PI / n;
@@ -739,8 +749,14 @@ function _lerp(a, b, t) { return a + (b - a) * t; }
 
 // ── Polygon arena helpers (N > 4) ────────────────────────────────────────────
 
+/** Normalised inradius for an n-gon: maximises arena size so that
+ *  polygon vertices stay just inside the canvas edges. */
+function _polyInradius(n) {
+  return (0.5 - 0.01) * Math.cos(Math.PI / n);
+}
+
 function _computeWalls(n, S) {
-  const inradius = (0.5 - FIELD_MARGIN) * S;
+  const inradius = _polyInradius(n) * S;
   const cx = 0.5 * S, cy = 0.5 * S;
   const halfLen = inradius * Math.tan(Math.PI / n);
   return Array.from({ length: n }, (_, i) => {
@@ -786,9 +802,9 @@ function _drawGoalPocketsPoly(walls, st, S, go) {
   const gd = GOAL_DEPTH * S;
   for (let i = 0; i < walls.length; i++) {
     if (!st.names[i] || st.eliminated[i]) continue;
-    const wd   = walls[i];
-    const gwPoly = GOAL_HALF_H * wd.halfLen * 2;  // goal half in canvas pixels
-    const goff = (go[i] || 0) * S;                // tangential offset in canvas pixels
+    const wd     = walls[i];
+    const gwPoly = GOAL_HALF_H * wd.halfLen * 2;  // proportional to wall — same ratio as 4-player
+    const goff   = (go[i] || 0) * S;
     ctx.save();
     ctx.translate(wd.mx, wd.my);
     ctx.rotate(Math.atan2(wd.ny, wd.nx));
@@ -797,6 +813,8 @@ function _drawGoalPocketsPoly(walls, st, S, go) {
     ctx.fillStyle = _goalBg(st, i);
     // goal pocket extends from x=0 outward to x=gd+4; centered at y=0 ±gwPoly
     _rrFill(0, -gwPoly, gd + 4, gwPoly * 2, 6);
+    // net texture — ctx is already in local rotated space, 'right' = deeper into goal
+    _drawNetLines(0, -gwPoly, gd + 4, gwPoly * 2, 'right');
     ctx.restore();
   }
 }
@@ -826,7 +844,7 @@ function _drawPaddlesPoly(walls, st, pt, S) {
   for (let i = 0; i < walls.length; i++) {
     if (!st.names[i]) continue;
     const wd     = walls[i];
-    const pw     = PADDLE_LEN_H * lm[i] * wd.halfLen * 2;  // paddle length in canvas pixels
+    const pw     = PADDLE_LEN_H * lm[i] * wd.halfLen * 2;  // proportional to wall — same ratio as 4-player
     const padTang = (dp[i] - 0.5) * 2 * wd.halfLen;        // tangential offset from wall centre
     ctx.save();
     ctx.translate(wd.mx, wd.my);

@@ -43,6 +43,8 @@ def compute_walls(n: int) -> list[WallDef]:
             WallDef(-1,  0,  0,  1,  inradius,      0.5,          0.5),  # LEFT
             WallDef( 1,  0,  0,  1,  1 - inradius,  0.5,          0.5),  # RIGHT
         ]
+    # Para n>4: maximiza o polígono mantendo os vértices dentro do canvas
+    inradius = (0.5 - 0.01) * math.cos(math.pi / n)
     half_len = inradius * math.tan(math.pi / n)
     walls: list[WallDef] = []
     for i in range(n):
@@ -192,7 +194,7 @@ class PhysicsEngine:
         vel_n       = b.vx * wd.nx + b.vy * wd.ny
         paddle_half = PADDLE_LEN_H / 2 * paddle_len_mults[wall_idx] * wd.half_len * 2
         paddle_tang = (paddles[wall_idx] - 0.5) * 2 * wd.half_len
-        # goal_half proportional to wall length (same ratio as in the square)
+        # goal_half proportional to wall length — same ratio as the 4-player square
         goal_half   = GOAL_HALF_H * wd.half_len * 2
         # goal_offsets[i] stores raw tangential offset (same units as tang)
         goal_tang   = goal_offsets[wall_idx]
