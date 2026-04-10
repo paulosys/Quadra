@@ -8,7 +8,7 @@ import { playBounce, playGoal, playPowerupCollect, playEliminated } from './audi
 import {
   showOverlay, hideAllOverlays,
   showWaiting, updatePowerupQueue, updateSpawnTimer,
-  showUpgradeCards, hideUpgradeCards,
+  showUpgradeCards, showLifeOffer, hideUpgradeCards,
 } from './ui.js';
 
 let _ws = null;
@@ -136,7 +136,7 @@ function _handleMessage(msg) {
       s.goals_scored  = msg.goals_scored || [0, 0, 0, 0];
       state.gameState = 'goal';
 
-      if (msg.eliminated_now) playEliminated(); else playGoal();
+      if (msg.eliminated_now && !msg.can_buy_life) playEliminated(); else playGoal();
       _flashScreen();
 
       // Show goal overlay with scorer info
@@ -161,17 +161,36 @@ function _handleMessage(msg) {
       break;
     }
 
-    case 'upgrade_pick':
+    case 'upgrade_pick': {
       state.gameState = 'upgrade';
-      showUpgradeCards(msg.cards, msg.goals_scored, state.mySlot, msg.timeout, send);
+      const pendingSlots = msg.pending_elimination_slots || [];
+      if (pendingSlots.includes(state.mySlot)) {
+        showLifeOffer(msg.goals_scored, state.mySlot, msg.timeout, send);
+      } else {
+        showUpgradeCards(msg.cards, msg.goals_scored, state.mySlot, msg.timeout, send);
+      }
       break;
+    }
 
     case 'upgrade_result': {
       const s = state.server;
       s.goals_scored    = msg.goals_scored;
       s.lives           = msg.lives;
+      s.eliminated      = msg.eliminated || s.eliminated;
       s.paddle_len_mult = msg.paddle_len_mult;
       s.speed_mult      = msg.speed_mult;
+      break;
+    }
+
+    case 'gameover': {
+      const wname = msg.winner >= 0
+        ? (msg.names[msg.winner] || `Jogador ${msg.winner + 1}`)
+        : '???';
+      if (msg.eliminated) state.server.eliminated = msg.eliminated;
+      document.getElementById('winnerName').textContent = wname;
+      hideUpgradeCards();
+      showOverlay('ovEnd');
+      state.gameState = 'gameover';
       break;
     }
 

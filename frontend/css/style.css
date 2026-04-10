@@ -280,6 +280,14 @@ canvas {
   color: #555;
   line-height: 1.6;
 }
+.life-offer-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  color: #e05555;
+  letter-spacing: .1em;
+  margin-bottom: 8px;
+  text-align: center;
+}
 
 /* ── Debug Sidebar ── */
 #debug-sidebar {

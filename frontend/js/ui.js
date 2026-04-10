@@ -99,6 +99,81 @@ export function showUpgradeCards(cards, goalsScored, mySlot, timeout, send) {
   }
 }
 
+export function showLifeOffer(goalsScored, mySlot, timeout, send) {
+  OVERLAYS.forEach(x => {
+    document.getElementById(x).style.display = 'none';
+  });
+  const overlay = document.getElementById('ovUpgrade');
+  overlay.style.display = 'flex';
+
+  const timerEl = document.getElementById('upgradeTimer');
+  const cardsEl = document.getElementById('upgradeCards');
+  cardsEl.innerHTML = '';
+
+  let decided  = false;
+  let timeLeft = timeout;
+
+  timerEl.textContent = `${timeLeft}s`;
+  if (_upgradeTimerInterval) clearInterval(_upgradeTimerInterval);
+  _upgradeTimerInterval = setInterval(() => {
+    timeLeft--;
+    if (timeLeft <= 0) {
+      clearInterval(_upgradeTimerInterval);
+      _upgradeTimerInterval = null;
+      timerEl.textContent = '0s';
+    } else {
+      timerEl.textContent = `${timeLeft}s`;
+    }
+  }, 1000);
+
+  const myGoals  = goalsScored[mySlot] ?? 0;
+  const canAfford = myGoals >= 3;
+
+  // Title
+  const title = document.createElement('div');
+  title.className = 'life-offer-title';
+  title.textContent = '⚠ Você perdeu todas as suas vidas!';
+  cardsEl.appendChild(title);
+
+  // Buy button
+  const buyDiv = document.createElement('div');
+  buyDiv.className = 'upgrade-card' + (canAfford ? '' : ' locked');
+  buyDiv.innerHTML = `
+    <div class="upgrade-cost">⚽ 3 gols</div>
+    <div class="upgrade-label">Comprar 1 vida</div>
+    <div class="upgrade-desc">${canAfford ? `Você tem ${myGoals} gols — clique para sobreviver!` : `Gols insuficientes (${myGoals}/3) — você será eliminado`}</div>
+  `;
+  if (canAfford) {
+    buyDiv.addEventListener('click', () => {
+      if (decided) return;
+      decided = true;
+      send({ type: 'pick_upgrade', card: 'life' });
+      buyDiv.classList.add('chosen');
+      if (_upgradeTimerInterval) { clearInterval(_upgradeTimerInterval); _upgradeTimerInterval = null; }
+      timerEl.textContent = 'Aguardando...';
+    });
+  }
+  cardsEl.appendChild(buyDiv);
+
+  // Skip button
+  const skipDiv = document.createElement('div');
+  skipDiv.className = 'upgrade-card';
+  skipDiv.innerHTML = `
+    <div class="upgrade-cost" style="color:#888">—</div>
+    <div class="upgrade-label">Desistir</div>
+    <div class="upgrade-desc">Sair do jogo agora</div>
+  `;
+  skipDiv.addEventListener('click', () => {
+    if (decided) return;
+    decided = true;
+    send({ type: 'pick_upgrade', card: null });
+    skipDiv.classList.add('chosen');
+    if (_upgradeTimerInterval) { clearInterval(_upgradeTimerInterval); _upgradeTimerInterval = null; }
+    timerEl.textContent = 'Aguardando...';
+  });
+  cardsEl.appendChild(skipDiv);
+}
+
 export function hideUpgradeCards() {
   if (_upgradeTimerInterval) { clearInterval(_upgradeTimerInterval); _upgradeTimerInterval = null; }
   document.getElementById('ovUpgrade').style.display = 'none';

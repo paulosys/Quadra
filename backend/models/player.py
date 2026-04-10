@@ -17,12 +17,13 @@ class Player:
     slot:            int
     name:            str
     ws:              Any  # WebSocketServerProtocol — avoid runtime import
-    lives:           int   = field(default_factory=lambda: LIVES_START)
-    eliminated:      bool  = False
-    goals_scored:    int   = 0
-    paddle_pos:      float = 0.5
-    paddle_len_mult: float = 1.0
-    speed_mult:      float = 1.0
+    lives:               int   = field(default_factory=lambda: LIVES_START)
+    eliminated:          bool  = False
+    pending_elimination: bool  = False   # true while player is offered to buy a life
+    goals_scored:        int   = 0
+    paddle_pos:          float = 0.5
+    paddle_len_mult:     float = 1.0
+    speed_mult:          float = 1.0
 
     def is_alive(self) -> bool:
         return not self.eliminated and self.lives > 0

@@ -19,8 +19,8 @@ log = logging.getLogger("quadra")
 # Upgrade cards available after each goal
 _UPGRADE_CARDS = [
     {"id": "life",   "cost_goals": 3, "label": "+1 Vida",    "desc": "Troca 3 gols por 1 vida extra"},
-    {"id": "paddle", "cost_goals": 2, "label": "+5% Barra",  "desc": "Aumenta 5% a barra do goleiro"},
-    {"id": "speed",  "cost_goals": 2, "label": "+10% Veloc.", "desc": "Aumenta 10% a velocidade"},
+    {"id": "paddle", "cost_goals": 2, "label": "+10% Barra", "desc": "Aumenta 10% a barra do goleiro"},
+    {"id": "speed",  "cost_goals": 2, "label": "+15% Veloc.", "desc": "Aumenta 15% a velocidade"},
 ]
 _UPGRADE_TIMEOUT  = 7.0   # seconds each player has to pick
 _GOAL_FLASH_PAUSE = 1.5   # brief pause for the goal flash before upgrade screen
@@ -86,30 +86,38 @@ async def _handle_goal(room: Room, scored: int, scorer: int | None) -> bool:
         return False
 
     scored_player.lives -= 1
-    eliminated_now = scored_player.lives <= 0
-    if eliminated_now:
+    eliminated_now  = scored_player.lives <= 0
+    can_buy_life    = eliminated_now and scored_player.goals_scored >= 3
+
+    if eliminated_now and not can_buy_life:
         scored_player.eliminated = True
+    elif can_buy_life:
+        scored_player.pending_elimination = True  # offer pending; not yet eliminated
 
     # Award goal to scorer — no own goals
     if scorer is not None and scorer != scored and scorer in room.players:
         room.players[scorer].goals_scored += 1
 
     alive     = room.alive_slots()
-    game_over = len(alive) <= 1
+    # game_over only if no pending offer can save anyone
+    game_over = len(alive) <= 1 and not can_buy_life
 
     room.state = "goal"
     await room.broadcast({
-        "type":           "goal",
-        "player":         scored,
-        "scorer":         scorer,
-        "lives":          room.lives,
-        "eliminated":     room.eliminated,
-        "eliminated_now": eliminated_now,
-        "game_over":      game_over,
-        "winner":         alive[0] if game_over and alive else -1,
-        "names":          [room.names.get(i, "") for i in range(room.n_sides)],
-        "goals_scored":   room.goals_scored,
-        "life_gained":    False,
+        "type":                    "goal",
+        "player":                  scored,
+        "scorer":                  scorer,
+        "lives":                   room.lives,
+        "eliminated":              room.eliminated,
+        "eliminated_now":          eliminated_now,
+        "can_buy_life":            can_buy_life,
+        "pending_elimination_slots": [s for s, p in room.players.items()
+                                       if p.pending_elimination],
+        "game_over":               game_over,
+        "winner":                  alive[0] if game_over and alive else -1,
+        "names":                   [room.names.get(i, "") for i in range(room.n_sides)],
+        "goals_scored":            room.goals_scored,
+        "life_gained":             False,
     })
 
     if game_over:
@@ -125,6 +133,20 @@ async def _handle_goal(room: Room, scored: int, scorer: int | None) -> bool:
 
         await _run_upgrade_phase(room)
         if room.num_players == 0:
+            return True
+
+        # After upgrade phase, a pending-elimination player who didn't buy a life
+        # is now fully eliminated — check if that ends the game.
+        alive_after = room.alive_slots()
+        if len(alive_after) <= 1:
+            room.state = "gameover"
+            winner = alive_after[0] if alive_after else -1
+            await room.broadcast({
+                "type":      "gameover",
+                "winner":    winner,
+                "names":     [room.names.get(i, "") for i in range(room.n_sides)],
+                "eliminated": room.eliminated,
+            })
             return True
 
         kickoff_scorer = scorer if (scorer is not None and scorer != scored) else None
@@ -179,14 +201,16 @@ async def _run_kickoff_phase(room: Room, scorer: int | None) -> float | None:
 
 async def _run_upgrade_phase(room: Room) -> None:
     """Show upgrade cards to all players and wait for picks (or timeout)."""
+    pending_slots = [s for s, p in room.players.items() if p.pending_elimination]
     all_done = room.begin_upgrade_phase()
     room.state = "upgrade"
 
     await room.broadcast({
-        "type":         "upgrade_pick",
-        "cards":        _UPGRADE_CARDS,
-        "goals_scored": room.goals_scored,
-        "timeout":      int(_UPGRADE_TIMEOUT),
+        "type":                      "upgrade_pick",
+        "cards":                     _UPGRADE_CARDS,
+        "goals_scored":              room.goals_scored,
+        "timeout":                   int(_UPGRADE_TIMEOUT),
+        "pending_elimination_slots": pending_slots,
     })
 
     try:
@@ -194,11 +218,18 @@ async def _run_upgrade_phase(room: Room) -> None:
     except asyncio.TimeoutError:
         pass
 
-    # Notify clients of applied upgrades so they can update display
+    # Resolve any pending eliminations (player didn't buy a life in time)
+    for p in room.players.values():
+        if p.pending_elimination:
+            p.eliminated          = True
+            p.pending_elimination = False
+
+    # Notify clients of applied upgrades and final elimination state
     await room.broadcast({
         "type":            "upgrade_result",
         "goals_scored":    room.goals_scored,
         "lives":           room.lives,
+        "eliminated":      room.eliminated,
         "paddle_len_mult": room.paddle_len_mult,
         "speed_mult":      room.speed_mult,
     })

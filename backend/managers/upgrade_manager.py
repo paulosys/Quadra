@@ -21,12 +21,16 @@ class UpgradeManager:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def begin_round(self, alive_slots: list[int]) -> asyncio.Event:
+    def begin_round(
+        self,
+        alive_slots:   list[int],
+        pending_slots: list[int] | None = None,
+    ) -> asyncio.Event:
         """Initialise a new upgrade phase. Returns an Event fired when all alive
-        players have picked (or timed out externally)."""
-        self._picks    = {}
-        self._all_done = asyncio.Event()
-        self._alive_slots = list(alive_slots)
+        players (and any pending-elimination players) have picked (or timed out)."""
+        self._picks       = {}
+        self._all_done    = asyncio.Event()
+        self._alive_slots = list(alive_slots) + list(pending_slots or [])
         return self._all_done
 
     def reset(self) -> None:
@@ -45,18 +49,26 @@ class UpgradeManager:
 
         self._picks[slot] = card
 
-        if card == "life":
-            if player.goals_scored >= 3:
-                player.goals_scored -= 3
-                player.lives += 1
-        elif card == "paddle":
-            if player.goals_scored >= 2:
-                player.goals_scored -= 2
-                player.paddle_len_mult = round(player.paddle_len_mult + 0.05, 4)
-        elif card == "speed":
-            if player.goals_scored >= 2:
-                player.goals_scored -= 2
-                player.speed_mult = round(player.speed_mult + 0.10, 4)
+        if player.pending_elimination:
+            # Player is on death's door — only buying a life can save them
+            if card == "life" and player.goals_scored >= 3:
+                player.goals_scored     -= 3
+                player.lives            += 1
+                player.pending_elimination = False
+            # Any other choice (or skip) → stays pending; eliminated after the phase
+        else:
+            if card == "life":
+                if player.goals_scored >= 3:
+                    player.goals_scored -= 3
+                    player.lives += 1
+            elif card == "paddle":
+                if player.goals_scored >= 2:
+                    player.goals_scored -= 2
+                    player.paddle_len_mult = round(player.paddle_len_mult + 0.10, 4)
+            elif card == "speed":
+                if player.goals_scored >= 2:
+                    player.goals_scored -= 2
+                    player.speed_mult = round(player.speed_mult + 0.15, 4)
 
         # Fire event when all alive players have picked
         if self._all_done and all(s in self._picks for s in self._alive_slots):

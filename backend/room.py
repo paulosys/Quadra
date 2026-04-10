@@ -123,9 +123,10 @@ class Room:
         for slot in range(n):
             if slot in self.players:
                 p = self.players[slot]
-                p.lives           = LIVES_START
-                p.eliminated      = False
-                p.goals_scored    = 0
+                p.lives               = LIVES_START
+                p.eliminated          = False
+                p.pending_elimination = False
+                p.goals_scored        = 0
                 p.paddle_pos      = 0.5
                 p.paddle_len_mult = 1.0
                 p.speed_mult      = 1.0
@@ -206,13 +207,17 @@ class Room:
 
     def begin_upgrade_phase(self) -> asyncio.Event:
         """Start the upgrade phase. Returns an Event fired when all players pick."""
-        return self._upgrade_mgr.begin_round(self.alive_slots())
+        pending = [s for s, p in self.players.items() if p.pending_elimination]
+        return self._upgrade_mgr.begin_round(self.alive_slots(), pending)
 
     def handle_upgrade_pick(self, slot: int, card: Optional[str]) -> None:
         """Process a player's upgrade card selection. Must hold room.lock."""
-        if slot not in self.players or self.players[slot].eliminated:
+        if slot not in self.players:
             return
-        self._upgrade_mgr.handle_pick(slot, card, self.players[slot])
+        p = self.players[slot]
+        if p.eliminated:  # fully eliminated can't pick
+            return
+        self._upgrade_mgr.handle_pick(slot, card, p)
 
     # ── Physics tick ──────────────────────────────────────────────────────────
 
